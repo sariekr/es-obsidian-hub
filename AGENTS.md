@@ -49,7 +49,7 @@ Keep inherited AnuPpuccin fonts/colors, theme-aware controls, the horizontal Scr
 
 ## Development and publication
 
-Keep three independent locations: the maintainer's personal vault, this development checkout, and a separate demo vault with fictional notes. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Work in this repository must never deploy to or alter the personal vault. Do not create shared symlinks, sync jobs, watchers or automatic copying between them.
+Keep three independent workspaces: the maintainer's personal vault, this development checkout, and a demo vault with fictional notes at `.local/demo-vault` inside the checkout. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). The entire `.local/` tree is Git-ignored and must never enter `distribution.json` or a release. Work in this repository must never deploy to or alter the personal vault. Do not create shared symlinks, sync jobs, watchers or automatic copying between the workspaces.
 
 The maintainer may first develop a feature in their personal hub. Port it here only after an explicit request to share that feature. Transfer the selected code changes, adapt personal assumptions into configurable defaults, and test in the demo vault. Never copy the personal vault, its notes, credentials, account snapshots or settings wholesale. A personal-hub change is not automatic authorization to update or publish this repository; repository changes are not automatic authorization to update the personal hub.
 

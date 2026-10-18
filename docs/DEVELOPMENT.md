@@ -6,9 +6,25 @@ Keep the personal hub, shared source and demo vault separate.
 | --- | --- | --- |
 | Personal vault | Everyday notes and personal experiments | Never changed by work on this repository. Never published as a release. |
 | Development checkout | Git source for the shared starter | Contains reviewed code, generic examples, documentation and distribution files. Keep account connections off. |
-| Demo vault | Native Obsidian testing and screenshots | Uses fictional notes only. Has no Git remote and is not a source for releases. |
+| `.local/demo-vault/` | Native Obsidian testing and screenshots | Uses fictional notes only. The whole `.local/` tree is Git-ignored and never included in releases. |
 
-Example local locations are `~/Developer/es-obsidian-hub` and `~/Developer/es-obsidian-hub-demo`. Keep the demo outside the checkout. They must be ordinary independent folders, not symlinks or folders automatically synchronized with the personal vault.
+The demo lives inside the project folder for convenience, while its notes, `.obsidian` settings and plugin files remain independent copies. For example:
+
+```text
+~/Developer/es-obsidian-hub/
+├── .git/                   # Shared source repository
+├── .local/
+│   └── demo-vault/          # Local-only Obsidian test vault
+├── .obsidian/              # Reviewed starter defaults and source runtime
+├── Hub/                    # Public starter examples
+└── docs/
+```
+
+Open `.local/demo-vault` with Obsidian's **Open folder as vault** for testing; use Finder's `Cmd+Shift+.` to reveal `.local`. It has its own notes and configuration but no `.git` directory of its own. Git commands run inside it would still discover the parent repository, so run Git from the project root and never force-add ignored demo files. Do not add `.local/` paths to the distribution manifest.
+
+The ignored demo is local workspace data and will not appear in a clone or release ZIP. To recreate it, extract a clean release into a temporary folder and move that extracted vault to `.local/demo-vault`, only when the target is absent and closed in Obsidian. The normal installer intentionally refuses destinations inside its own source checkout. Do not copy an everyday vault into this location.
+
+Use ordinary independent folders, not symlinks or folders automatically synchronized with the personal vault.
 
 ## Bring a personal feature into the shared version
 
