@@ -1,0 +1,120 @@
+filters:
+  and:
+    - file.hasTag("kanban")
+    - file.inFolder("Hub")
+formulas:
+  status_icon: if(board_column == "done", "Done", if(board_column == "in-progress", "In Progress", "Backlog"))
+  category_label: category
+  priority_label: if(priority == "urgent", "🔴 Urgent", if(priority == "high", "🟠 High", if(priority == "medium", "🟡 Medium", if(priority == "low", "⚪ Low", ""))))
+  priority_rank: if(priority == "urgent", 1, if(priority == "high", 2, if(priority == "medium", 3, if(priority == "low", 4, 5))))
+  days_idle: (now() - file.mtime).days.round(0)
+  is_stale: if((now() - file.mtime).days > 30, "Stale", "")
+properties:
+  board_column:
+    displayName: Column
+  category:
+    displayName: Category
+  completed_at:
+    displayName: Completed At
+  completed_at_source:
+    displayName: Completion Date Source
+  priority:
+    displayName: Priority
+  formula.status_icon:
+    displayName: Status
+  formula.category_label:
+    displayName: Type
+  formula.priority_label:
+    displayName: Priority Label
+  formula.days_idle:
+    displayName: Days Idle
+  formula.is_stale:
+    displayName: Alert
+views:
+  - type: kanban-view
+    name: Board
+    filters:
+      or:
+        - board_column != "done"
+        - (now() - if(completed_at, date(completed_at), file.mtime)).days < 7
+    order:
+      - formula.priority_label
+      - formula.category_label
+      - formula.is_stale
+    sort:
+      - property: formula.priority_rank
+        direction: ASC
+      - property: file.ctime
+        direction: DESC
+    cardTitleProperty: note.youtrack_title
+    groupByProperty: note.board_column
+    quickAddFolder: Hub
+    columnOrders:
+      note.board_column:
+        - backlog
+        - in-progress
+        - done
+    columnColors:
+      note.board_column:
+        done: red
+        backlog: orange
+        in-progress: green
+    imageAspectRatio: 0.5
+    wrapPropertyValues: false
+  - type: table
+    name: By Status
+    groupBy:
+      property: formula.status_icon
+      direction: ASC
+    order:
+      - file.name
+      - formula.status_icon
+      - formula.priority_label
+      - formula.category_label
+      - completed_at
+      - formula.days_idle
+      - formula.is_stale
+    columnSize:
+      formula.category_label: 124
+  - type: table
+    name: By Category
+    groupBy:
+      property: formula.category_label
+      direction: ASC
+    order:
+      - file.name
+      - formula.status_icon
+      - formula.priority_label
+      - formula.days_idle
+  - type: table
+    name: By Priority
+    groupBy:
+      property: formula.priority_label
+      direction: ASC
+    order:
+      - file.name
+      - formula.status_icon
+      - formula.category_label
+      - formula.days_idle
+  - type: table
+    name: Stale Items
+    filters:
+      and:
+        - (now() - file.mtime).days > 30
+        - board_column != "done"
+    order:
+      - file.name
+      - formula.status_icon
+      - formula.priority_label
+      - formula.category_label
+      - formula.days_idle
+  - type: cards
+    name: Cards
+    order:
+      - file.name
+      - formula.status_icon
+      - formula.priority_label
+      - formula.category_label
+      - formula.is_stale
+  - type: table
+    name: View

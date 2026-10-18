@@ -1,0 +1,16 @@
+.DS_Store
+.trash/
+__pycache__/
+*.pyc
+.obsidian/workspace-mobile.json
+.obsidian/workspace.json
+.obsidian/plugins/*/data.json
+.obsidian/plugins/*/youtrack-widget.json
+.env
+.env.*
+*client_secret*.json
+*credentials*.json
+*.pem
+*.key
+artifacts/
+dist/

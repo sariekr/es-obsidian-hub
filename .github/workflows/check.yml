@@ -1,0 +1,20 @@
+name: Check starter vault
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: node --test .obsidian/plugins/aimultiple-kanban-extras/tests/*.test.cjs
+      - run: python3 -B -m unittest discover -s .obsidian/plugins/aimultiple-kanban-extras/tests -p 'test_*.py' -v
+      - run: python3 scripts/check-setup.py --pristine
+      - run: python3 -B -m unittest discover -s scripts/tests -v
+      - run: python3 scripts/build-release.py

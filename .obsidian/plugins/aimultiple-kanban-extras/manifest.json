@@ -1,0 +1,10 @@
+{
+  "id": "aimultiple-kanban-extras",
+  "name": "ES Obsidian Hub",
+  "version": "1.0.0",
+  "minAppVersion": "1.11.4",
+  "description": "A ready-to-use personal dashboard, note tools and kanban board.",
+  "author": "sariekr",
+  "authorUrl": "https://github.com/sariekr",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,789 @@
+/* Ship with the plugin so these do not depend on per-device snippet toggles. */
+.obk-column[data-column-value="done"] .obk-card {
+  opacity: 0.55;
+}
+.obk-column[data-column-value="done"] .obk-card-title {
+  text-decoration: line-through;
+}
+.obk-column[data-column-value="done"] .obk-card:hover,
+.obk-column[data-column-value="done"] .obk-card:focus-within {
+  opacity: 0.85;
+}
+.nav-folder:has(> .nav-folder-title[data-path="Hub/_priority-seeds"]),
+.nav-folder:has(> .nav-folder-title[data-path="Hub/_kanban"]) {
+  display: none !important;
+}
+.aim-kanban-wip {
+  cursor: pointer;
+}
+.aim-kanban-wip.is-over-limit {
+  color: var(--text-warning);
+  font-weight: var(--font-semibold);
+}
+
+/* Theme tokens keep these controls in sync with AnuPpuccin and other themes. */
+.aim-kanban-toolbar,
+.aim-note-toolbar,
+.aim-property-popover {
+  --aim-control-radius: var(--radius-m, 8px);
+  --aim-control-bg: color-mix(in srgb, var(--background-secondary) 60%, var(--background-primary));
+  --aim-control-border: color-mix(in srgb, var(--background-modifier-border) 65%, transparent);
+  --aim-accent-bg: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+  --aim-accent-border: color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+  font-size: var(--font-ui-small);
+}
+.aim-kanban-toolbar button,
+.aim-note-toolbar button,
+.aim-property-popover button {
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--aim-control-border);
+  border-radius: var(--aim-control-radius);
+  background: var(--aim-control-bg);
+  color: var(--text-normal);
+  box-shadow: none;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: var(--font-medium, 500);
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.aim-kanban-toolbar button,
+.aim-note-toolbar button {
+  max-width: 100%;
+  white-space: nowrap;
+}
+.aim-kanban-toolbar button:hover:not(:disabled),
+.aim-note-toolbar button:hover:not(:disabled),
+.aim-property-popover button:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+  box-shadow: none;
+}
+.aim-kanban-toolbar button:focus-visible,
+.aim-note-toolbar button:focus-visible,
+.aim-property-popover button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.aim-kanban-toolbar button:disabled,
+.aim-note-toolbar button:disabled,
+.aim-property-popover button:disabled {
+  color: var(--text-muted);
+  opacity: 0.65;
+  cursor: default;
+}
+
+/* Quick capture belongs to the Backlog header, with no extra row above the board. */
+.aim-kanban-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.obk-column-header .aim-kanban-toolbar button { height: 28px; padding: 0 8px; font-size: 12px; }
+@container (max-width: 950px) {
+  .aim-home-host .obk-column-header { padding-inline: 10px; gap: 4px; }
+  .aim-home-host .obk-column-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+.aim-kanban-toolbar .aim-kanban-capture-button {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  border-color: transparent;
+}
+.aim-kanban-toolbar .aim-kanban-capture-button:hover:not(:disabled) {
+  background: var(--interactive-accent-hover);
+  border-color: transparent;
+}
+
+/* A sibling before ItemView.contentEl: no nodes inside the Markdown/editor DOM. */
+.aim-note-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  background: var(--background-primary);
+  border-bottom: 1px solid var(--aim-control-border);
+}
+.aim-note-toolbar > [hidden] {
+  display: none !important;
+}
+/* Membership is always the first action; disabled non-members stay neutral. */
+.aim-note-toolbar > button:first-child:not(:disabled),
+.aim-note-toolbar .aim-note-property-button[aria-expanded="true"]:not(:disabled) {
+  color: var(--text-accent);
+  background: var(--aim-accent-bg);
+  border-color: var(--aim-accent-border);
+}
+.aim-note-toolbar > button:first-child:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--interactive-accent) 16%, var(--background-primary));
+}
+.aim-note-toolbar:has(> button:nth-child(2):not([hidden])) > button:first-child:disabled {
+  color: var(--text-accent);
+  background: var(--aim-accent-bg);
+  border-color: transparent;
+  opacity: 1;
+}
+.aim-note-toolbar:has(> button:nth-child(2):not([hidden])) > button:first-child:disabled::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-inline-end: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+}
+.aim-note-toolbar > button:nth-child(2) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.aim-note-toolbar-hint {
+  color: var(--text-muted);
+}
+.aim-note-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+  flex: 0 0 auto;
+}
+.aim-note-delete-action {
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--background-modifier-border);
+  flex: 0 0 auto;
+}
+.aim-note-toolbar .aim-note-delete-button {
+  background: transparent;
+  border-color: transparent;
+}
+.aim-note-toolbar .aim-note-delete-button:not(:disabled),
+.aim-note-toolbar .aim-note-delete-button:hover:not(:disabled) {
+  color: var(--text-error);
+}
+.aim-note-toolbar .aim-note-delete-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text-error) 8%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--text-error) 25%, transparent);
+}
+.aim-note-toolbar .aim-note-delete-button:focus-visible {
+  outline-color: var(--text-error);
+}
+
+/* Hide only the native panel in note views that have working property controls. */
+.aim-note-properties-managed > .view-content .metadata-container {
+  display: none !important;
+}
+.aim-note-toolbar .aim-note-property-button {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aim-note-toolbar .aim-note-property-button.is-unset:not(:disabled):not(:hover):not(:focus-visible):not([aria-expanded="true"]) {
+  color: color-mix(in srgb, var(--text-normal) 65%, var(--text-muted));
+}
+.aim-property-popover {
+  position: fixed;
+  z-index: var(--layer-popover, 60);
+  width: min(340px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-s, 0 8px 28px rgb(0 0 0 / 18%));
+}
+.aim-property-header,
+.aim-property-actions,
+.aim-property-types {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.aim-property-header {
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-inline-start: 2px;
+}
+.aim-property-header strong {
+  color: var(--text-normal);
+  font-weight: var(--font-semibold, 600);
+}
+.aim-property-popover .aim-property-header button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+}
+.aim-property-popover input[type="search"],
+.aim-property-form input:not([type="checkbox"]),
+.aim-property-form textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--aim-control-border);
+  border-radius: var(--aim-control-radius);
+  background: var(--aim-control-bg);
+  color: var(--text-normal);
+  box-shadow: none;
+  font: inherit;
+  padding: 8px 10px;
+}
+.aim-property-popover input[type="search"] {
+  height: 36px;
+}
+.aim-property-popover input[type="search"]::placeholder {
+  color: var(--text-muted);
+}
+.aim-property-popover input[type="search"]:focus,
+.aim-property-form input:not([type="checkbox"]):focus,
+.aim-property-form textarea:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aim-accent-bg);
+}
+.aim-property-list {
+  max-height: min(360px, 60vh);
+  overflow: auto;
+  margin-top: 8px;
+}
+.aim-property-popover .aim-property-option {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 32px;
+  padding: 7px 9px;
+  margin: 2px 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.aim-property-popover .aim-property-option:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+}
+.aim-property-popover .aim-property-option[aria-pressed="true"] {
+  color: var(--text-accent);
+  background: var(--aim-accent-bg);
+}
+.aim-property-option small {
+  display: block;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.aim-property-form,
+.aim-property-value {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.aim-property-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.aim-property-form input[type="checkbox"] {
+  align-self: flex-start;
+}
+.aim-property-popover .aim-property-types button[aria-pressed="true"] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.aim-property-message {
+  color: var(--text-error);
+  white-space: pre-wrap;
+  margin-top: 6px;
+}
+.aim-property-empty {
+  color: var(--text-muted);
+  padding: 8px;
+}
+.aim-tag-controls {
+  margin-top: 10px;
+}
+.aim-tag-help {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  line-height: 1.45;
+}
+.aim-property-popover .aim-tag-controls button {
+  width: 100%;
+  text-align: start;
+}
+.aim-property-popover [hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aim-kanban-toolbar button,
+  .aim-note-toolbar button,
+  .aim-property-popover button {
+    transition: none;
+  }
+}
+
+/* Daily home: local widgets, above the existing three-column board. */
+/* Only the main board's managed kanban view; other Bases and note embeds retain their controls. */
+.workspace-leaf-content[data-type="bases"] .view-content > .bases-view:has(.aim-home-host) {
+  /* Bases normally reserves 60px below custom views. Home owns its scroll area. */
+  --bases-view-padding: 0;
+  scrollbar-gutter: auto;
+}
+.workspace-leaf-content[data-type="bases"] .view-content:has(> .bases-view .aim-home-host):not(:has(.aim-home-board-controls-open)) > .bases-header {
+  display: none;
+}
+.aim-home-host .obk-column-header > .obk-column-add-btn {
+  display: none;
+}
+.obk-view-container.aim-home-host {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.aim-home-host > .obk-board {
+  flex: 1 0 380px;
+  min-height: 380px;
+  padding-bottom: 0;
+}
+.aim-home {
+  --aim-home-secondary: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted));
+  --aim-home-link: color-mix(in srgb, var(--text-accent) 55%, var(--text-normal));
+  --aim-home-border: color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: var(--font-ui-small, 13px);
+}
+.aim-home [hidden] { display: none !important; }
+.aim-home-heading,
+.aim-home-title,
+.aim-home-tile-heading,
+.aim-home-month-actions,
+.aim-home-calendar-link {
+  display: flex;
+  align-items: center;
+}
+.aim-home-heading {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px 4px;
+}
+.aim-home-heading-actions { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.aim-home-config { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 0 16px; }
+.aim-home-views { display: flex; gap: 4px; margin: 0 0 8px; overflow-x: auto; padding: 3px; }
+.aim-home-views button { flex: 0 0 auto; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aim-home-views button[aria-pressed="true"] { background: var(--background-modifier-hover); color: var(--text-accent); font-weight: 600; }
+.aim-home-source-select { width: 100%; min-width: 0; font: inherit; font-weight: 600; }
+.aim-home-bookmark { font-size: 15px; line-height: 1.5; margin: 12px 0 8px; overflow-wrap: anywhere; flex: 1; min-height: 0; overflow-y: auto; white-space: pre-wrap; }
+.aim-home-origin { margin: 0 0 6px; overflow-wrap: anywhere; }
+.aim-home-recover { align-self: flex-start; margin-bottom: 12px; }
+.aim-home-add-options { margin: 16px 0; }
+.aim-home-add-options summary { cursor: pointer; color: var(--text-muted); }
+.aim-home-source-details { font-size: 12px; color: var(--aim-home-secondary); margin-bottom: 6px; max-height: 90px; overflow-y: auto; flex-shrink: 1; }
+.aim-home-source-details summary { cursor: pointer; width: fit-content; }
+.aim-home-source-details p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.aim-home .aim-home-primary { padding: 7px 20px; background: var(--interactive-accent); color: var(--text-on-accent); }
+.aim-home .aim-home-primary:hover { background: var(--interactive-accent-hover); }
+.aim-home .aim-home-pin-empty { width: 100%; flex: 1; min-height: 0; border: 1px dashed var(--aim-home-border); color: var(--aim-home-link); }
+.aim-home-pinned-links { display: flex; flex-direction: column; overflow-y: auto; min-height: 0; flex: 1; }
+.aim-home .aim-home-pinned-link { justify-content: flex-start; text-align: left; padding: 12px 4px; overflow-wrap: anywhere; }
+.aim-home-pinned-link + .aim-home-pinned-link { border-top: 1px solid var(--aim-home-border); }
+.aim-home-manager [hidden] { display: none !important; }
+.aim-home-field { display: grid; gap: 7px; margin: 16px 0; font-size: 13px; }
+.aim-home-field input, .aim-home-field select { width: 100%; min-width: 0; }
+.aim-home-path-row { display: flex; align-items: flex-end; gap: 8px; }
+.aim-home-path-row > .aim-home-field { flex: 1; min-width: 0; }
+.aim-home-path-row > button { flex: 0 0 auto; margin-bottom: 16px; }
+.aim-home-manager .aim-home-caption { color: var(--text-muted); line-height: 1.6; }
+.aim-home-form-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.aim-home-form-error { color: var(--text-error); font-size: 13px; overflow-wrap: anywhere; }
+.aim-home-manager-row { display: flex; align-items: center; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--background-modifier-border); }
+.aim-home-source-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.aim-home-check-option { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.aim-home-manager input:focus-visible, .aim-home-manager select:focus-visible, .aim-home-source-select:focus-visible, .aim-home-source-details summary:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.aim-home-widget-choice { display: grid; gap: 5px; flex: 1 1 140px; font-size: 12px; color: var(--aim-home-secondary); }
+.aim-home-widget-choice select { width: 100%; min-width: 0; }
+.aim-home-title { gap: 16px; flex-wrap: wrap; }
+.aim-home h2 {
+  margin: 0;
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.aim-home h3 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.aim-home-date, .aim-home-caption { color: var(--aim-home-secondary); }
+.aim-home-caption { font-size: 12px; line-height: 1.5; }
+.aim-home-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--aim-home-columns, 3), minmax(0, 1fr));
+  gap: 14px;
+}
+.aim-home-tile {
+  min-width: 0;
+  height: var(--aim-home-widget-height, 360px);
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border: 1px solid var(--aim-home-border);
+  border-radius: 16px;
+  background: var(--background-primary);
+}
+.aim-home-tile > :not(.aim-home-bookmark):not(.aim-home-source-details):not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-youtrack-list):not(.aim-home-note-list):not(.aim-home-shortcut-list):not(.aim-home-pinned-links):not(.aim-home-pin-empty):not(.aim-home-scratch-input):not(.aim-home-slack-list) { flex-shrink: 0; }
+.aim-home-tile-heading {
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  margin-bottom: 4px;
+}
+.aim-home button, .aim-home a {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.aim-home button {
+  height: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-normal);
+  box-shadow: none;
+  font: inherit;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.aim-home button:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+}
+.aim-home button:focus-visible, .aim-home a:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+.aim-home button:disabled { opacity: 0.55; cursor: default; }
+.aim-home .aim-home-text-button {
+  font-size: 12px;
+  color: var(--aim-home-secondary);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.aim-home-month-actions { gap: 2px; }
+.aim-home .aim-home-icon-button {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+}
+.aim-home-icon-button svg, .aim-home-link-icon svg { width: 15px; height: 15px; }
+.aim-home-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(var(--aim-calendar-weeks, 5), minmax(22px, 1fr));
+  align-items: stretch;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+  font-variant-numeric: tabular-nums;
+}
+.aim-home-weekday { text-align: center; font-size: 11px; color: var(--aim-home-secondary); padding: 2px 0 4px; }
+.aim-home .aim-home-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 0 2px 5px;
+  font-size: 13px;
+}
+.aim-home-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 100%;
+  min-height: 16px;
+  max-height: 26px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.aim-home .aim-home-day[aria-current="date"] .aim-home-day-number { border-color: var(--interactive-accent); font-weight: 700; }
+.aim-home .aim-home-day[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+}
+.aim-home .aim-home-day[aria-pressed="true"] .aim-home-day-number {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.aim-home .aim-home-day[data-meetings]:not([data-meetings="0"])::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: calc(50% - 2px);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  color: var(--interactive-accent);
+  background: currentColor;
+}
+.aim-home .aim-home-day[data-meetings="2"]::after { left: calc(50% - 5px); box-shadow: 6px 0 currentColor; }
+.aim-home .aim-home-day[data-meetings="3"]::after { left: calc(50% - 8px); box-shadow: 6px 0 currentColor, 12px 0 currentColor; }
+.aim-home .aim-home-daily-button {
+  margin-top: 6px;
+  min-height: 28px;
+  padding: 4px 8px;
+  width: 100%;
+  color: var(--aim-home-link);
+  background: color-mix(in srgb, var(--interactive-accent) 9%, var(--background-primary));
+  font-weight: 500;
+}
+.aim-home-note-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.aim-home .aim-home-note {
+  display: block;
+  white-space: normal;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 4px;
+  border-radius: 6px;
+  text-align: left;
+}
+.aim-home-note + .aim-home-note { border-top: 1px solid var(--aim-home-border); }
+.aim-home-note > .aim-home-caption { display: block; }
+.aim-home-note-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+.aim-home-shortcut-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.aim-home .aim-home-shortcut {
+  display: block;
+  min-height: 46px;
+  padding: 10px 8px;
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  font-size: 14px;
+  background: var(--background-primary-alt);
+}
+.aim-home-tile-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 3px 8px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--aim-home-border);
+}
+.aim-home-calendar-link { gap: 7px; color: var(--aim-home-link); text-decoration: none; text-underline-offset: 3px; }
+.aim-home-calendar-link:hover { text-decoration: underline; }
+.aim-home-link-icon { display: inline-flex; }
+.aim-home-empty { margin: 8px 0; color: var(--aim-home-secondary); font-size: 13px; line-height: 1.6; }
+.aim-home-shortcut-list .aim-home-empty { grid-column: 1 / -1; }
+.aim-home-calendar-tabs { display: flex; gap: 4px; margin: 0 0 6px; }
+.aim-home .aim-home-calendar-tabs button { min-height: 26px; padding: 3px 12px; font-size: 12px; color: var(--aim-home-secondary); }
+.aim-home .aim-home-calendar-tabs button[aria-pressed="true"] { background: var(--background-primary-alt); color: var(--text-normal); font-weight: 600; }
+.aim-home-calendar-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px; margin-top: 4px; }
+.aim-home-agenda { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.aim-home-agenda-date { margin: 2px 0 10px; font-size: 13px; font-weight: 600; }
+.aim-home-meeting { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
+.aim-home-meeting + .aim-home-meeting { border-top: 1px solid var(--aim-home-border); }
+.aim-home-meeting-time { color: var(--aim-home-link); font-size: 12px; font-variant-numeric: tabular-nums; }
+.aim-home-meeting-name { font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.aim-home a.aim-home-meeting { grid-template-columns: 48px minmax(0, 1fr) auto; color: var(--text-normal); text-decoration: none; border-radius: 4px; }
+.aim-home a.aim-home-meeting:hover { background: var(--background-modifier-hover); }
+.aim-home a.aim-home-meeting:hover .aim-home-meeting-name { text-decoration: underline; text-underline-offset: 3px; }
+.aim-home-meeting-join { color: var(--aim-home-link); font-size: 11px; align-self: start; padding-top: 2px; }
+.aim-home-feed-message { font-size: 13px; line-height: 1.5; color: var(--text-warning, var(--text-normal)); }
+.aim-home-sync-result { display: block; margin-top: 6px; }
+.aim-home-sync-result button { margin-left: 6px; }
+.aim-home-youtrack-list { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 5px; }
+.aim-home-issue { display: block; padding: 9px 3px; border-radius: 5px; color: var(--text-normal); text-decoration: none; }
+.aim-home-issue + .aim-home-issue { border-top: 1px solid var(--aim-home-border); }
+.aim-home-issue:hover { background: var(--background-modifier-hover); }
+.aim-home-issue .aim-home-note-name { font-size: 13px; }
+.aim-home-issue .aim-home-caption { display: block; font-size: 11px; }
+.aim-home-slack-list { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
+.aim-home-slack-tile > .aim-home-caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
+.aim-home-slack-filters { display: flex; gap: 3px; flex-wrap: wrap; margin: 0 0 8px; }
+.aim-home-slack-filters .aim-home-text-button { padding: 3px 7px; min-height: 26px; font-size: 11px; }
+.aim-home-slack-filters button[aria-pressed="true"] { color: var(--text-accent); background: var(--background-modifier-hover); box-shadow: inset 0 0 0 1px var(--aim-home-border); }
+.aim-home-slack-mention { display: block; padding: 10px 3px; border-radius: 5px; color: var(--text-normal); text-decoration: none; }
+.aim-home-slack-mention + .aim-home-slack-mention { border-top: 1px solid var(--aim-home-border); }
+.aim-home-slack-mention:hover { background: var(--background-modifier-hover); }
+.aim-home-slack-mention:hover .aim-home-slack-text { text-decoration: underline; text-underline-offset: 3px; }
+.aim-home-slack-meta { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.aim-home-slack-author { font-weight: var(--font-semibold); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aim-home-slack-time { color: var(--aim-home-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aim-home-slack-channel { display: block; font-size: 11px; color: var(--aim-home-link); overflow-wrap: anywhere; margin: 2px 0 4px; }
+.aim-home-slack-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 13px; line-height: 1.45; }
+.aim-home-slack-message { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--text-warning, var(--text-normal)); max-height: 84px; overflow-y: auto; }
+.aim-home-slack-footer { justify-content: space-between; }
+.aim-home-slack-footer .aim-home-caption { font-size: 11px; }
+.aim-home-slack-tile .aim-home-tile-heading h3 { min-width: 0; }
+.aim-home-setup { line-height: 1.6; }
+.aim-home-setup [hidden] { display: none !important; }
+.aim-home-setup ol { padding-left: 23px; }
+.aim-home-setup .aim-home-caption { color: var(--text-muted); }
+.aim-home-setup label { display: grid; gap: 8px; margin-top: 18px; font-weight: 600; }
+.aim-home-setup input { width: 100%; font-weight: 400; }
+.aim-home-setup-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.aim-home-setup-actions a { font-size: 13px; }
+@container (max-width: 950px) {
+  .aim-home-grid { grid-template-columns: repeat(var(--aim-home-columns, 3), minmax(260px, 1fr)); overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
+  .aim-home-tile { scroll-snap-align: start; }
+}
+@container (max-width: 570px) {
+  .aim-home-grid { grid-template-columns: repeat(var(--aim-home-columns, 3), minmax(260px, 90%)); }
+  .aim-home-title { gap: 3px; flex-direction: column; align-items: flex-start; }
+  .aim-home-date { font-size: 12px; }
+  .aim-home-shortcut-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aim-home .aim-home-note { min-height: 48px; }
+  .aim-home { margin-bottom: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aim-home button, .aim-home a { transition: none; }
+}
+
+/* Scratchpad stays in the header while the three widgets share the row below. */
+.aim-home-heading { margin-bottom: 6px; flex-wrap: wrap; align-items: center; }
+.aim-home-config { gap: 6px; padding: 0 0 10px; }
+.aim-home-config button[aria-pressed="true"] { background: var(--background-modifier-hover); color: var(--text-accent); }
+.aim-home-heading > .aim-home-title { flex: 0 0 auto; }
+.aim-home-heading-actions { flex: 0 0 auto; }
+.aim-home-scratch-bar {
+  flex: 1 1 340px;
+  min-width: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 8px;
+  padding: 4px 6px 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, var(--background-modifier-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-secondary));
+}
+.aim-home-scratch-bar:focus-within { border-color: var(--interactive-accent); }
+.aim-home .aim-home-scratch-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  min-height: 0;
+  max-height: 104px;
+  box-sizing: border-box;
+  resize: none;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: none;
+  background: transparent;
+  color: var(--text-normal);
+  caret-color: var(--text-accent);
+  font: inherit;
+  font-size: 14px;
+  line-height: 22px;
+  scrollbar-width: thin;
+}
+.aim-home-scratch-input::placeholder { color: var(--aim-home-secondary); opacity: 1; }
+.aim-home-scratch-input::selection { background: var(--text-selection); }
+.aim-home .aim-home-scratch-input:focus { outline: none; box-shadow: none; }
+.aim-home-scratch-actions { display: flex; gap: 6px; align-items: center; align-self: end; padding: 3px 0; }
+.aim-home .aim-home-scratch-actions .aim-home-primary { min-width: 64px; padding: 7px 16px; }
+.aim-home-scratch-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.aim-home-scratch-status.is-visible { position: static; grid-column: 1 / -1; width: auto; height: auto; clip-path: none; padding: 2px 0 4px; overflow-wrap: anywhere; }
+.aim-home-scratch-status.is-error { color: var(--text-error); }
+@container (max-width: 950px) {
+  .aim-home-heading > .aim-home-scratch-bar { flex-basis: calc(100% - 230px); }
+  .aim-home-heading > .aim-home-title { flex-basis: 100%; }
+  .aim-home-heading-actions { margin-inline-start: auto; }
+}
+@container (max-width: 570px) {
+  .aim-home-heading > .aim-home-scratch-bar { flex-basis: 100%; }
+  .aim-home-scratch-bar { grid-template-columns: minmax(0, 1fr); padding: 4px 10px; }
+  .aim-home-scratch-actions { justify-content: flex-end; padding-top: 0; }
+}
+
+/* Imported issues keep the same tile layout; only the target column is emphasized. */
+.aim-home-issue[draggable="true"] { cursor: grab; }
+.aim-home-issue[draggable="true"]:active { cursor: grabbing; }
+.aim-home-local-state { display: block; font-size: 11px; color: var(--text-normal); margin-top: 3px; }
+.aim-home-host .obk-column.aim-youtrack-drop-target { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+.aim-home-host .obk-column.aim-youtrack-drop-target > .obk-column-header { background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-secondary)); }
+
+/* One shared separator adjusts the row; tile contents keep their own scroll areas. */
+.aim-home-resize {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: row-resize;
+  touch-action: none;
+  user-select: none;
+}
+.aim-home-resize::after {
+  content: "";
+  width: 48px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--text-muted);
+}
+.aim-home-resize:hover::after,
+.aim-home-resize:focus-visible::after,
+.aim-home-resizing .aim-home-resize::after {
+  background: var(--interactive-accent);
+}
+.aim-home-resize:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; border-radius: 4px; }
+.aim-home-resizing { user-select: none; }
+
+/* Native setup forms reuse the inherited Obsidian theme. */
+.aim-home-setup { max-height: 75vh; overflow-y: auto; }
+.aim-home-setup label.aim-home-sync-toggle { display: flex; align-items: center; gap: 8px; }
+.aim-home-setup input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; flex: 0 0 16px; }
+.aim-home-setup input:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }

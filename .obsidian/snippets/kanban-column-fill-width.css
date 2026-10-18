@@ -1,0 +1,10 @@
+/* kanban-bases-view: 3 kolon yan yana iken boş kalan sağ tarafı doldur.
+   Default plugin width: clamp(200px, 60cqw, 280px) — geniş ekranda dar kalıyor.
+   Bu snippet kolonları eşit şekilde genişletip mevcut alanı tamamen doldurur.
+   Swimlane modunda ve vertical-layout snippet'iyle uyumlu (onlar override eder). */
+
+.obk-board:not(.obk-board--with-swimlanes) .obk-column {
+  flex: 1 1 0;
+  max-width: none;
+  min-width: 240px;
+}

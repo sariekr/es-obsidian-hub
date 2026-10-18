@@ -1,0 +1,52 @@
+{
+  "main": {
+    "id": "hub-main",
+    "type": "split",
+    "children": [
+      {
+        "id": "hub-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "hub-board",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "Hub/Kanban Board.base"
+              },
+              "title": "Kanban Board",
+              "icon": "lucide-table"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "hub-left",
+    "type": "split",
+    "children": [
+      {
+        "id": "hub-left-tabs",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "hub-files",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 260,
+    "collapsed": true
+  },
+  "active": "hub-board",
+  "lastOpenFiles": []
+}
