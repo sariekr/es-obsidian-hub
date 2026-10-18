@@ -744,10 +744,10 @@ test('Home rejects executable links and still validates legacy checkpoint blocks
 test('Continue reads a normal handoff section, preserving a bounded excerpt without guessing from prose',async()=>{
  const f=fixture();await f.start();
  assert.equal(typeof f.plugin.parseHomeContinuation,'function','Continue must accept ordinary Markdown');
- const text='# Work\n\n## Şimdi hazır olan\nDone\n\n## Sıradaki somut iş\n\n`PRIVATE-TECH-B01`: sıradaki beş teknik ihtiyacın gerçek birincil kaynaklarını incele;\nexact pasaj eşlemesini tamamla.\n\nAnother paragraph.\n\n## Rules\nDo not infer from here.';
+ const text='# Work\n\n## Ready now\nDone\n\n## Sıradaki somut iş\n\n`DEMO-TASK-01`: review the five example sources;\nfinish the sample comparison.\n\nAnother paragraph.\n\n## Rules\nDo not infer from here.';
  const parsed=f.plugin.parseHomeContinuation(text);
  assert.equal(parsed.status,'ready');assert.equal(parsed.heading,'Sıradaki somut iş');
- assert.equal(parsed.next,'PRIVATE-TECH-B01: sıradaki beş teknik ihtiyacın gerçek birincil kaynaklarını incele; exact pasaj eşlemesini tamamla.');
+ assert.equal(parsed.next,'DEMO-TASK-01: review the five example sources; finish the sample comparison.');
  assert.equal(f.plugin.parseHomeContinuation('# Project\nSomething important without a heading.').status,'missing');
  assert.equal(f.plugin.parseHomeContinuation('---\nexample: |\n  ## Next steps\n  Wrong\n---\n```md\n## Next steps\nWrong\n```\n<!--\n## Next steps\nWrong\n-->\n# Rules\nNothing').status,'missing');
  const huge=f.plugin.parseHomeContinuation('## Next steps\n'+'word '.repeat(200));assert.ok(huge.next.length<=321);assert.equal(huge.truncated,true);

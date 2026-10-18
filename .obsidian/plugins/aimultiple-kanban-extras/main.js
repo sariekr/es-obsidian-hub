@@ -874,7 +874,7 @@ class AIMultipleKanbanExtras extends Plugin {
         if (!folder?.children) throw new Error(`${DAILY_FOLDER} is not a folder.`);
         const template = this.app.vault.getAbstractFileByPath(DAILY_TEMPLATE);
         let content = template instanceof TFile ? await this.app.vault.cachedRead(template)
-          : '---\ntags:\n  - type/note\n  - topic/personal\ndate: {{date}}\n---\n\n# {{title}}\n\n## Günün notları\n\n\n## Aklımda kalanlar\n\n';
+          : '---\ntags:\n  - type/note\n  - topic/personal\ndate: {{date}}\n---\n\n# {{title}}\n\n## Daily notes\n\n\n## Things to remember\n\n';
         content = content.replaceAll('{{date}}', day).replaceAll('{{title}}', new Intl.DateTimeFormat('tr-TR', { dateStyle: 'full' }).format(date));
         try { file = await this.app.vault.create(path, content); }
         catch (error) {

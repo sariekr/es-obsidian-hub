@@ -1,33 +1,44 @@
-# 1.0.0 doğrulama kaydı
+# Verification record
 
-Tarih: **18 Ekim 2026**. Bu kayıt paylaşılan başlangıç paketine aittir.
+## 1.0.1 — 18 October 2026
 
-## Kod ve paket
+This update changes starter appearance/workspace defaults, English documentation and presentation assets. Integration runtime behavior is unchanged; the unused legacy daily-note fallback headings are now English.
 
-- **179 Node testi, 21 Python testi geçti.** Board üyeliği, not taşıma/koruma, Scratchpad, takvim, Slack, YouTrack okuma/aktarma/durum değişikliği testleri sentetik verilerle çalışır.
-- Yeni taşınabilir profil testleri başka sunucu/kullanıcı/proje ve State adlarını, bağlantısız çalışma, kapalı varsayılan State eşitlemesi, isteğe bağlı Slack kaynakları ve Keychain profil değişikliklerini kapsar. Bağlantı kontrolü sürerken yeni import/State işlemleri engellenir.
-- İlk güven onayında kalabilen `Unknown view type: kanban-view` durumu testle yakalandı; yalnızca ana dashboard sekmesini yeniden açan düzeltme eklendi.
-- Dağıtım dosyaları `distribution.json` içinde tek tek listelenir ve SHA-256 ile denetlenir. Kaynak notlardan/snapshotlardan toplu kopya yapılmadı. Yayın ZIP’i yalnızca bu listedeki dosyaları içerir.
-- **3 paket testi geçti:** boş hedefe kurulum, dolu/symlink hedefin reddi, değiştirilmiş runtime dosyasının tespiti ve listede olmayan dosyaların ZIP’e alınmaması. ZIP iki kez üretilip aynı SHA-256 sonucu doğrulandı.
-- Kanban Bases View 0.9.5 dosyaları resmi release ile, AnuPpuccin CSS’i v1.5.0 kaynak etiketiyle eşleştirildi. Lisanslar ve tema kaynak arşivi dahildir.
+The separate demo vault opened with the **300px left sidebar visible**, **Files / Search / Bookmarks** tabs at the top, Files selected, and the narrow ribbon hidden. The board remained open with Scratchpad, all three widgets and the three kanban columns. The expanded Hub folder and additional example cards in the screenshot are demonstration content.
 
-## Gerçek Obsidian
+`docs/assets/hub-preview.jpg` is an actual Obsidian window capture from that demo vault. It contains only fictional sample notes; Calendar, YouTrack and Slack were disconnected. No personal-vault screenshot or account data was used. The image was visually inspected before publication.
 
-Mac’te Obsidian **1.11.7**, ayrı ve temiz bir test vault’u, sentetik örnek notlar kullanıldı. Kişisel vault veya gerçek servis hesabı test verisi olarak kullanılmadı.
+Repository and release review covers the explicit distribution allowlist, credential-shaped strings, personal source paths/identifiers, Markdown links and screenshot contents. This is a bounded review, not a guarantee from a comprehensive secret-scanning service. Commits use GitHub noreply author metadata.
 
-- Klasör açıldığında ana Board sekmesi hazır geldi. Kullanıcının açık güven onayıyla eklentiler etkinleştirildi.
-- İlk açılışta görülen bilinmeyen kanban görünümü yeniden üretildi. Eklentileri UI’dan etkinleştirdikten sonra düzeltmenin dashboard’u elle dosya açmadan geri getirdiği doğrulandı.
-- `Try Add to board` notu board’a eklendi ve çıkarıldı. İçeriği ve dosya konumu korundu; dosyadan geri okundu.
-- Scratchpad’e iki satır yazmak dosya oluşturmadı. Save tam metinle bir sıradan Quick Note oluşturdu; board açık kaldı.
-- Status/Priority/Type/Tags/Other properties, Make a folder ve ayrı Delete araçlarının varlığı görüldü.
-- YouTrack bağlantı alanları ve kapalı varsayılan State eşitlemesi yerel modalda görüldü.
+## 1.0.0 baseline — 18 October 2026
 
-## Sentetik tarayıcı önizlemesi
+### Code and package checks
 
-Gerçek runtime, vendor ve tema CSS’i ile mock Obsidian/Slack API’leri kullanıldı. Önizleme kendi DOM denetimlerini **PASS** olarak tamamladı: Scratchpad Save/hata/retry/çift tıklama/tam içerik/kurtarma ve gizli widget davranışı; Slack kaynak/filtre/sınır/otomatik yenileme davranışları. Masaüstü koyu tema, 800px açık panel ve YouTrack bağlantı formu görsel olarak incelendi.
+- **179 Node tests and 21 Python tests passed.** Tests use synthetic data for membership, note preservation/moves, Scratchpad, Calendar, Slack and YouTrack reads/imports/State changes.
+- Portable-profile tests cover other servers/accounts/projects/State names, disconnected behavior, default-off State sync, optional Slack sources and changed Keychain profiles. New import/State operations are blocked while connection validation is pending.
+- A focused test reproduced `Unknown view type: kanban-view` after first trust. The repair reopens only the affected main dashboard leaf.
+- Distribution files are individually listed and SHA-256 checked in `distribution.json`. The release builder does not collect arbitrary notes or snapshots from a working vault.
+- **3 distribution tests passed:** fresh installation, rejection of nonempty/symlink destinations, changed-runtime detection, and exclusion of unlisted files. Two ZIP builds produced the same SHA-256.
+- Kanban Bases View 0.9.5 matches official release files. AnuPpuccin CSS matches the v1.5.0 source tag. Licenses and the corresponding theme source archive are included.
+- The macOS GitHub Actions workflow passed all suites, the pristine checker and release build.
 
-## Kapsam dışı
+### Native Obsidian
 
-Bu public sürüm için gerçek Google/Slack/YouTrack hesabıyla yeni giriş, gerçek YouTrack State yazısı, arkadaşların Mac’leri, Intel Mac, mobil veya Windows/Linux doğrulanmadı. Gerçek hesap bağlantısını her kullanıcı kendi cihazında tamamlamalı. Google/Slack kurum izinleri ve YouTrack sunucusunun MCP/alan şeması uyumu ayrıca gerekir. Kod testleri canlı servis testinin yerini tutmaz.
+Tested on a Mac with Obsidian **1.11.7**, a separate clean vault and synthetic notes. No personal vault or real service account was used as a fixture.
 
-Son profil eşzamanlılık korumaları Node testlerinde, son checkbox düzeni gerçek-runtime tarayıcı önizlemesinde doğrulandı; bu son küçük değişiklikler için native test dizisinin tamamı yeniden yapılmadı. Upstream Obsidian/kanban DOM değişiklikleri seçicileri etkileyebilir.
+- Opening the folder selected the Board tab. Plugins were enabled after the user explicitly approved Obsidian’s trust prompt.
+- The initial unknown-view problem was reproduced. Re-enabling the plugins through the UI recovered the dashboard without manually reopening its file.
+- `Try Add to board` joined and left the board. Its body and location were preserved and read back from disk.
+- Typing two Scratchpad lines created no file. Save created one ordinary Quick Note with the exact text, while the board stayed open.
+- Status/Priority/Type/Tags/Other properties, Make a folder and separate Delete controls were present.
+- The native YouTrack modal showed connection fields and default-off State sync.
+
+### Synthetic browser preview
+
+The fixture uses the actual runtime, vendor and theme CSS with mocked Obsidian/Slack APIs. Its DOM checks completed with **PASS**: Scratchpad Save/error/retry/double-click/exact-body/recovery/hidden-widget behavior; Slack source/filter/limit/automatic-refresh behavior. Desktop dark, an 800px light panel and the YouTrack setup form were visually inspected.
+
+### Limits
+
+No new live Google/Slack/YouTrack login, real YouTrack State write, friend’s Mac, Intel Mac, mobile or Windows/Linux test is claimed. Each user must finish their own account connection. Organization permissions and YouTrack MCP/field-schema compatibility still apply; mocks do not establish live service compatibility.
+
+Final profile concurrency guards were tested in Node, and the checkbox layout in the actual-runtime browser fixture. The complete native behavioral sequence was not repeated for those final small changes. Upstream Obsidian/kanban DOM changes may affect selectors.

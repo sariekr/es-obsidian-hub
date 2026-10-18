@@ -1,30 +1,31 @@
-# Kurulumda takılırsan
+# Troubleshooting
 
-| Belirti | Kontrol |
+| Symptom | What to check |
 | --- | --- |
-| Board yerine normal notlar veya boş ekran | Açtığın vault klasöründe gizli `.obsidian` var mı? `Hub/Kanban Board.base` dosyasını aç. |
-| `Unknown view type: kanban-view` | **Settings → Community plugins** altında iki eklenti de açık mı? İlk güven onayından sonra ayarları kapat. Otomatik toparlanmazsa board sekmesini kapatıp yeniden aç. |
-| Home veya Add to board yok | **ES Obsidian Hub** açık mı? Aynı isimli başka vault veya farklı config folder açmış olabilir misin? Board görünümü `Board` olmalı. |
-| Eklenti yüklenemedi | Paketin `.obsidian` klasörünü eksik kopyalamış olabilirsin. Denetleyiciyi çalıştır. Kaynak dosyalar eksikse temiz ZIP’i yeni klasöre aç. |
-| Notun Add to board düğmesi pasif | Not `Hub` altında olmalı. README/AGENTS gibi kök belgeler board üyeliği için kapsam dışında. |
-| Remove from board sonrası hâlâ görünüyor | Notun gövdesinde `#kanban` etiketi olabilir. Eklenti gövdeyi sessizce değiştirmez; etiketi kendin kaldır. |
-| Type listesindeki klasör kayboldu | Yalnızca Hub’ın doğrudan alt klasörleri Type olur. Utility klasörleri ve dosyalar Type değildir. |
-| Done kartı bir süre sonra görünmüyor | Ana Board, tamamlanma tarihinden yedi gün sonra tamamlanan kartları gizler. **Customize → Show board controls → By Status** ile bulabilirsin. Dosya silinmez. |
-| Sütunlar dar veya yana kayıyor | Dar pencerede widget’lar yatay kayar. Pencereyi büyüt; widget altındaki ayırıcıyı yukarı çek. Mac ekranının yüksekliğine göre görünen kart sayısı değişir. |
-| YouTrack Python hatası | `python3 scripts/check-setup.py` çalıştır. İlk bulunan `/opt/homebrew/bin/python3` veya `/usr/local/bin/python3` sürümünün 3.11+ olması gerekir. |
-| YouTrack kimlik hatası | Görünen ad yerine tam login kullan. Token aynı kullanıcıya ait ve YouTrack kapsamlı olmalı. |
-| YouTrack boş | Proje anahtarını, sana atanmış unresolved işleri ve sunucunun MCP görünürlük ayarlarını kontrol et. Boş liste yanlış proje anahtarıyla da ilişkili olabilir. |
-| State değişmiyor | Başlangıçta eşitleme kapalıdır. İstersen **YouTrack settings → Board status sync** içinde etkinleştir ve sunucudaki gerçek State adlarını yaz. Yalnızca yeni sütun değişiklikleri veya açık Sync status eylemi yazar. |
-| Google 403 / API disabled | OAuth istemcisinin ait olduğu projede Calendar API açık mı? Workspace yöneticisi izin veriyor mu? |
-| Slack missing scope | Gerekli izinleri **User Token Scopes** içine ekle ve uygulamayı workspace’e yeniden kur. Yeni User OAuth Token ile bağlan. |
-| Slack kanal/grup bulunamadı | Kanal üyesi ve seçilen kullanıcı grubunun üyesi olmalısın. İstemiyorsan ilgili alanı boş bırak. Kanal adı/handle gir; görünen başlık veya kanal URL’si değil. |
-| İkinci Mac’te hesaplar yok | Her Mac’te ayrı bağlan. Vault kopyalamak Keychain bağlantısını taşımak değildir. |
-| Scratchpad metni kaybolmasın | Cihaz değiştirmeden Save seç. Taslak yerel kurtarma içindir; Sync ile taşınmaz. |
+| Empty screen or ordinary notes instead of the board | Does the selected vault contain the hidden `.obsidian` folder? Open `Hub/Kanban Board.base`. |
+| `Unknown view type: kanban-view` | Enable both supplied plugins under **Settings → Community plugins**, then close settings. If automatic recovery does not work, close and reopen the board tab. |
+| Home or Add to board is missing | Check **ES Obsidian Hub** is enabled, the correct vault/config folder is open, and the Base view is **Board**. |
+| The plugin cannot load | Run the checker. If runtime files are missing, extract a complete release into a new folder. |
+| The folder sidebar is hidden | Use the upper-left sidebar toggle. In a fresh 1.0.1 vault, Files starts selected with Search and Bookmarks at the top. Existing workspaces retain their own layout. |
+| Add to board is disabled | The note must be under `Hub`. Root documents such as README and AGENTS are outside board membership scope. |
+| A note remains after Remove from board | It may have an inline `#kanban` tag in its body. The plugin does not silently rewrite your prose; remove that tag yourself. |
+| A Type folder is missing | Only direct Hub subfolders become Types. Utility folders and loose files are excluded. |
+| A Done card disappears later | The main Board hides cards seven days after completion. Find them with **Customize → Show board controls → By Status**. Their files are not deleted. |
+| Columns look narrow or scroll sideways | Narrow panels scroll widgets horizontally. Enlarge the window or drag the widget separator upward. Visible card count depends on window height. |
+| YouTrack reports a Python error | Run `python3 scripts/check-setup.py`. The first existing `/opt/homebrew/bin/python3` or `/usr/local/bin/python3` must be 3.11+. |
+| YouTrack identity check fails | Use your exact login, not display name. The token must belong to that account and have the YouTrack scope. |
+| YouTrack shows an empty list | Check the project key, unresolved issues assigned to you, and server MCP visibility. An incorrect project key can also produce an empty result. |
+| YouTrack State does not change | Sync starts off. To enable it, configure **YouTrack settings → Board status sync** with real State names. Only subsequent selected imports, column changes or an explicit Sync status action write remotely. |
+| Google returns 403 / API disabled | Enable Calendar API in the project owning your OAuth client, and check Workspace approval. |
+| Slack reports missing scope | Add scopes under **User Token Scopes**, reinstall the app, then reconnect with its User OAuth Token. |
+| Slack cannot find a channel/group | You must belong to the selected channel/group. Enter a channel name/group handle, not a URL or display title. Leave optional fields blank if unwanted. |
+| Connections are absent on another Mac | Connect separately on each device. Copying a vault does not transfer Keychain credentials. |
+| Keep a Scratchpad draft when switching devices | Click **Save** first. Recovery drafts are local and do not Sync. |
 
-Dosya kontrolü Terminal’den, vault klasöründe:
+From a Terminal opened in the vault folder, run:
 
 ```sh
 python3 scripts/check-setup.py
 ```
 
-Bu komut şifre okumaz, ağa bağlanmaz, dosya değiştirmez. Hata durumunda sonucu Codex’e gösterebilirsin. Token/OAuth JSON veya özel mesaj ekran görüntüsü ekleme. [Kurulum talimatı](../AGENTS.md) mevcut notları koruyarak ilerlemeyi anlatır.
+This command reads package files without credentials, network requests or writes. You can share its output with Codex. Do not include tokens, OAuth JSON or screenshots of private messages. [AGENTS.md](../AGENTS.md) explains how to troubleshoot while preserving existing notes.

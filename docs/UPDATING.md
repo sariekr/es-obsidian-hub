@@ -1,15 +1,21 @@
-# Güncelleme
+# Updating
 
-Bu paket bir şablondur; günlük notlarına otomatik güncelleme uygulamaz.
+This starter does not automatically replace files in your everyday vault.
 
-1. Scratchpad taslağını **Save** ile nota dönüştür. Sync kullanıyorsan bitmesini bekle.
-2. Vault klasörünün tamamını yedekle. Sonra Obsidian’ı kapat.
-3. Yeni release ZIP’ini **başka bir klasöre** aç. Sürüm notlarını ve `docs/VERIFICATION.md` dosyasını oku.
-4. Genel bir Extras güncellemesinde yalnızca `.obsidian/plugins/aimultiple-kanban-extras/` altındaki kod, manifest, CSS ve yardımcı script dosyalarını değiştir. Kendi **data.json** ayarlarını ve **youtrack-widget.json** snapshot’ını koru. Klasörün tamamını silip değiştirme.
-5. `Hub`, `Templates`, `.obsidian/workspace.json`, `app.json`, `appearance.json`, board/taxonomy veya kendi dosyalarının üzerine şablon kopyalama. Yeni bir sürüm bu alanlarda değişiklik gerektiriyorsa dosya farklarını tek tek inceleyerek uygula.
-6. Vendor eklenti veya tema güncellemesini sürüm notları istemedikçe ayrıca yapma. Extras bazı upstream DOM seçicilerine bağlıdır.
-7. Obsidian’ı aç; board ve not araçlarını kontrol et. YouTrack’te sırf test için gerçek State değiştirme. Bir sorun varsa yedekten yalnızca değiştirdiğin kodu geri al.
+1. **Save** any Scratchpad draft. If you use Sync, let it finish.
+2. Back up the entire vault, then close Obsidian.
+3. Extract the new release into a **separate folder**. Read its release notes and `docs/VERIFICATION.md`.
+4. For a normal Extras update, replace only the code, manifest, CSS and helper scripts under `.obsidian/plugins/aimultiple-kanban-extras/`. Preserve your **data.json** preferences and **youtrack-widget.json** snapshot. Do not delete and replace the entire folder.
+5. Keep your `Hub`, `Templates`, `.obsidian/workspace.json`, `app.json`, `appearance.json`, board and taxonomy. If a release requires changes there, review and apply individual differences.
+6. Update vendor plugins or the theme only when release notes call for it. Extras depends on some upstream DOM selectors.
+7. Reopen Obsidian and check the board and note tools. Do not change a real YouTrack State just for testing. If needed, restore only the changed code from your backup.
 
-`scripts/install.py` yalnızca yeni ve boş hedeflere kurulum yapar; güncelleme aracı değildir. Kişisel vault’u public GitHub’a push ederek güncelleme alma. Ayrı bir kaynak checkout’u ve ayrı bir kişisel vault kullan.
+`scripts/install.py` installs into new empty destinations only. It is not an updater. Keep a separate source checkout and personal vault; do not publish your personal vault to obtain updates.
 
-`distribution.json` başlangıç paketinin hash’lerini kaydeder. Bir sürümü bilinçli güncellediğinde yeni runtime hash’lerini içeren denetleyici/manifesti de taşı. Kullanıcının değiştirdiği örnek notları eski hash’lere döndürme; normal `check-setup.py` kişisel notların içeriğini denetlemez.
+`distribution.json` records starter-file hashes. When deliberately updating a version, also carry over its checker and manifest with the new runtime hashes. Do not restore edited sample notes to their original hashes: normal `check-setup.py` does not validate personal note contents.
+
+## 1.0.1 layout defaults
+
+New vaults start with a 300px left sidebar open, Files selected, Search and Bookmarks tabs beside it at the top, and the narrow vertical ribbon hidden. Existing vaults can use the sidebar toggle and **Settings → Appearance → Show ribbon** to match this arrangement. Do not replace an existing workspace merely to change these preferences.
+
+Version 1.0.1 also adds an English README and guides, plus a demo screenshot. The screenshot contains additional fictional cards for illustration; the starter keeps its small set of editable example notes. Integration runtime behavior is unchanged.

@@ -180,7 +180,7 @@ window.bootFixture = async ({ source, schema }) => {
     leaf.view.containerEl.innerHTML = `<div class="obk-view-container"><div class="obk-board">${['backlog', 'in-progress', 'done'].map((column, index) => `
       <div class="obk-column" data-column-value="${column}" style="--obk-column-accent-color:${['#d78c71', '#439b59', '#c52e61'][index]}">
         <div class="obk-column-header"><span>${['Backlog', 'In-Progress', 'Done'][index]}</span><span>3</span></div>
-        <div class="obk-column-body">${['Proje notları', 'Sonraki adım', 'Gözden geçir'].map((title, i) => `<div class="obk-card" data-entry-path="Hub/Other/example-${index}-${i}.md"><div class="obk-card-title">${title}</div><div>Priority Label 🟡 Medium</div><div>Type Other</div></div>`).join('')}</div>
+        <div class="obk-column-body">${['Project notes', 'Next step', 'Review'].map((title, i) => `<div class="obk-card" data-entry-path="Hub/Other/example-${index}-${i}.md"><div class="obk-card-title">${title}</div><div>Priority Label 🟡 Medium</div><div>Type Other</div></div>`).join('')}</div>
       </div>`).join('')}</div></div>`;
   };
   state.addNote = (path, doc = document) => {

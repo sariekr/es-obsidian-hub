@@ -1,76 +1,78 @@
-# Kendi hesaplarını bağlama
+# Connect your own accounts
 
-Hesap kurmadan board’u kullanabilirsin. Hiçbir bağlantıda paket sahibinin hesabı kullanılmaz. Tokenlar ve OAuth istemci dosyaları yalnızca Obsidian’ın yerel bağlantı penceresine girilir. Bunları notlara, GitHub’a veya Codex sohbetine yapıştırma.
+The board works without any account connection. This package never uses the maintainer’s accounts. Enter tokens and OAuth files only in Obsidian’s local setup dialogs, not in notes, GitHub or chat.
 
 ## Google Calendar
 
-Bu sürüm Google hesabının **primary** takvimini okur; başka bir takvimi seçme arayüzü yoktur. Agenda’daki Google Meet ve Zoom bağlantıları toplantıyı açar. Etkinlik oluşturmaz veya değiştirmez.
+This version reads your Google account’s **primary** calendar. It does not offer a calendar selector or create/change events. Agenda opens available Google Meet and Zoom links.
 
 ### Desktop Google sign-in
 
-1. Tarayıcıda kendi hesabınla [Google Cloud Console](https://console.cloud.google.com/) aç. Bir proje oluştur veya hesabın için ayrılmış mevcut projeyi seç.
-2. **APIs & Services → Library → Google Calendar API → Enable**.
-3. **Google Auth platform → Branding / Audience** altında uygulamayı yapılandır. Workspace içinde kullanılacaksa uygun olduğunda **Internal** seç. Kişisel Gmail hesabında **External** ve test aşamasındaysan kendi hesabını test kullanıcılarına ekle. Workspace yöneticisi uygulamaya izin vermek zorunda olabilir.
-4. **Clients → Create Client → Desktop app** seç. İstemci JSON dosyasını bilgisayarına indir. Vault dışında tut; paylaşma.
-5. Hub’da **Connect Google Calendar → Google sign-in · desktop → Import client JSON** ile bu dosyayı seç. Ardından **Sign in with Google**.
-6. Tarayıcıda kendi hesabınla salt okunur izni ver. Obsidian’a dön; pencere kendi kendine kapanana kadar bekle. İlk ay okuması başarılı olmadan bağlantı kaydedilmez.
-7. **Agenda** seçip etkinliklerinin geldiğini kontrol et. Obsidian’ı yeniden açınca bağlantının geri geldiğini doğrula.
+1. Open [Google Cloud Console](https://console.cloud.google.com/) with your own account. Create a project or select one dedicated to your account.
+2. Enable **APIs & Services → Library → Google Calendar API**.
+3. Under **Google Auth platform → Branding / Audience**, configure the app. Use **Internal** where appropriate for your Workspace. For a personal Gmail account, use **External** and add your account as a test user while the app is in testing. Your Workspace administrator may need to approve it.
+4. Choose **Clients → Create Client → Desktop app**. Download the client JSON and keep it outside your vault.
+5. In Hub, choose **Connect Google Calendar → Google sign-in · desktop → Import client JSON**. Select the downloaded file, then **Sign in with Google**.
+6. Grant read-only access in your browser. Return to Obsidian and wait for the setup dialog to close itself. The connection is saved only after the first month loads successfully.
+7. Check **Agenda**, then reopen Obsidian to verify that the saved connection works.
 
-İstenen izin: `calendar.events.owned.readonly`. Access token ve etkinlikler bellekte; istemci bilgileri ve refresh token Obsidian Keychain’dedir. Açık ve görünür takvim yaklaşık beş dakikada bir yenilenir. [Google’ın Desktop OAuth kurulumu](https://developers.google.com/workspace/calendar/api/quickstart/python) bu projedeki istemci hazırlığını açıklar; oradaki Python kodunu veya pip paketlerini kurman gerekmez.
+The requested scope is `calendar.events.owned.readonly`. Access tokens and events stay in memory; client details and refresh tokens are stored in Obsidian Keychain. A visible Calendar refreshes roughly every five minutes. Google’s [Desktop OAuth setup guide](https://developers.google.com/workspace/calendar/api/quickstart/python) explains client creation; you do not need its Python sample or pip packages for this plugin.
 
-Google, External uygulamaların test modundaki refresh tokenlarını sınırlayabilir. Bağlantı sonradan düşerse yeniden sign-in yap ve Google projesinin yayın/kurum politikasını kontrol et. Uygun yayın durumu için [Google OAuth rehberini](https://developers.google.com/identity/protocols/oauth2) izle.
+Google may limit refresh tokens for External apps in testing. If access later expires, sign in again and check your Google project’s publishing/organization policy. See [Google’s OAuth guide](https://developers.google.com/identity/protocols/oauth2).
 
-### Özel iCal alternatifi
+### Private iCal alternative
 
-Google Calendar’ın ayarlarında **Settings for my calendars → Integrate calendar → Secret address in iCal format** gerçekten mevcutsa, Hub’daki **Private iCal link** seçeneğine gir. Workspace hesabında bu alan kapatılmış olabilir; bu durumda OAuth kullan. Takvimini public yapman gerekmez. Özel iCal adresi de bir sırdır; yalnızca yerel maskeli alana gir.
+If Google Calendar provides **Settings for my calendars → Integrate calendar → Secret address in iCal format**, enter that address in Hub’s **Private iCal link** field. Workspace policy may hide this option; use OAuth in that case. You do not need to make your calendar public. Treat the private iCal address as a secret.
 
-**Disconnect** bu cihazdaki bağlantıyı kaldırır. Google tarafındaki yetkiyi ayrıca kaldırmak için bağlantı penceresindeki Google account permissions bağlantısını kullan.
+**Disconnect** removes this device’s saved connection. To revoke Google-side access, use **Google account permissions** in the setup dialog.
 
 ## YouTrack
 
-### Gerekenler
+### Requirements
 
-- YouTrack sunucunun HTTPS adresi ve `/mcp` desteği. Bu sürüm kök adreste çalışan sunucular içindir; özel port veya `/youtrack` gibi alt yol desteklenmez.
-- Kendi **login** değerin; görünen adınla aynı olmak zorunda değil.
-- Tek bir projenin kısa anahtarı: örneğin `TEAM`.
-- Kendi hesabından üretilmiş **permanent token**, kapsamı **YouTrack**.
-- Mac’te **Python 3.11+**. Yoksa [python.org macOS installer](https://www.python.org/downloads/macos/) ile kur. Eklenti önce `/opt/homebrew/bin/python3`, yoksa `/usr/local/bin/python3` kullanır. İlk bulunan sürüm eskiyse onu güncelle. Sistem Python’u tek başına yeterli olmayabilir; pip paketi gerekmez.
+- Your HTTPS YouTrack server with `/mcp` support. This release supports a server at the hostname root, without a custom port or a subpath such as `/youtrack`.
+- Your account’s **login**, which may differ from its display name.
+- One project’s short key, such as `TEAM`.
+- A **permanent token** from your own account with the **YouTrack** scope.
+- **Python 3.11+** on your Mac. Use the [python.org macOS installer](https://www.python.org/downloads/macos/) if needed. The plugin selects `/opt/homebrew/bin/python3` first, then `/usr/local/bin/python3`. Update the first existing interpreter if it is too old. No pip packages are required.
 
-YouTrack profilinde **Account Security → Tokens / New token** bölümünden token oluştur. Yönetici bu özelliği sınırlamış olabilir. [JetBrains’in permanent token kılavuzu](https://www.jetbrains.com/help/youtrack/cloud/manage-permanent-token.html) ve [MCP sunucu belgesi](https://www.jetbrains.com/help/youtrack/cloud/model-context-protocol-server.html).
+Create a token under your YouTrack profile’s **Account Security → Tokens / New token**. Your administrator may restrict this feature. See JetBrains’ [permanent token guide](https://www.jetbrains.com/help/youtrack/cloud/manage-permanent-token.html) and [MCP server documentation](https://www.jetbrains.com/help/youtrack/cloud/model-context-protocol-server.html).
 
-### Bağlama
+### Connect
 
-1. Hub’da **YouTrack settings** aç.
-2. **Server**: `company.youtrack.cloud` biçiminde kendi sunucun.
-3. **Your login**: kendi login’in. **Project key**: kendi projenin anahtarı.
-4. **Permanent token**: tokenı yerel maskeli alana gir.
-5. İlk kullanımda **Board status sync** kapalı kalsın. **Connect** seç.
-6. Kimlik ve liste doğrulanınca pencere kapanır. **Refresh** ile sana atanmış açık işleri yenile. Liste otomatik ağ sorgusuyla yenilenmez.
+1. Open **YouTrack settings** in Hub.
+2. Enter your **Server**, such as `company.youtrack.cloud`.
+3. Enter **Your login** and **Project key**.
+4. Paste your **Permanent token** in the local masked field.
+5. Leave **Board status sync** off for the initial setup, then choose **Connect**.
+6. The dialog closes after identity and list validation. Use **Refresh** to load unresolved issues assigned to you. The list does not poll the network automatically.
 
-Bu sürüm MCP yanıtında **Assignee, State ve Priority** alanları olan projeler için hazırlanmıştır. State seçenekleri farklı olabilir; eşitleme ayarından değiştirilir. Çoklu assignee veya farklı alan şemaları hata verebilir; [AGENTS.md](../AGENTS.md) uyarlama sınırlarını açıklar. Özel karakterli login’lerde desteklenen biçim harf/rakam ve `_ . @ + -` karakterleridir. `Connect` sonrasında boş liste görmek, projenin gerçekten boş olduğunun tek başına kanıtı değildir; anahtarı ve issue görünürlüğünü de kontrol et.
+This adapter expects MCP issue responses with scalar **Assignee, State and Priority** fields. State names can differ and are configurable. Multiple assignees or custom field schemas may require adapter changes; [AGENTS.md](../AGENTS.md) explains the boundaries. Logins support letters, digits and `_ . @ + -`. Project keys use uppercase letters, digits and underscores, starting with a letter. An empty list alone does not prove the project is empty: also check the key and issue visibility.
 
-### Yerel kopya ve isteğe bağlı State eşitleme
+### Local imports and optional State sync
 
-Widget’taki bir işi board sütununa sürükle veya sağ tık → **Add to …** seç. Tam açıklama, mevcut yorumlar ve izin verilen boyuttaki ekler `Hub/YouTrack` ve `Hub/Attachments/YouTrack` altında yerel kopyaya alınır. Tekrar aktarmak aynı kartı kullanır. **My notes** bölümüne yazabilirsin; Refresh yazdıklarını değiştirmez.
+Drag an issue from the widget onto a board column, or right-click → **Add to …**. Its description, available comments and bounded attachments are copied into `Hub/YouTrack` and `Hub/Attachments/YouTrack`. Reimporting uses the same card. Write in **My notes**; Refresh does not overwrite your local content.
 
-**Board status sync → Enable remote status changes** seçilirse üç sütunun State karşılığını tanımla. Örneğin `Open / Doing / Closed`. Kaydetmek mevcut kartları topluca değiştirmez. Sonraki seçili aktarma ve sütun değişiklikleri yalnızca o işin **State** alanına yazar. Açıklama, yorum veya worklog göndermez. Bir hata olursa kart yerelde kalır; **Retry** ile güncel yerel sütunu tekrar denersin. Belirsiz yazılar kendiliğinden tekrarlanmaz.
+To change remote State from the board, open **Board status sync → Enable remote status changes** and set the three State names, such as `Open / Doing / Closed`. Saving these settings does not bulk-update existing cards. Subsequent selected imports and column changes write only that issue’s **State**. Moving out of Done can reopen it. Descriptions, comments and worklogs are never sent.
 
-Token ve profil Obsidian Keychain’dedir. Python’a yalnızca bir işlem süresince stdin üzerinden iletilir; komut satırına, ortama veya Codex/Claude ayar dosyalarına konmaz. Snapshot `youtrack-widget.json` yerel dosyasıdır ve Git’ten dışlanır. Başka sunucudaki aynı issue ID’sine ait eski bir yerel kopya varsa, bunu karıştırmak yerine aktarım durur; eski kopyayı Hub dışına taşı veya ayrı vault kullan.
+If a write fails, the local card remains. **Retry** sends its current local column. Uncertain writes are not replayed automatically. New imports/State writes are blocked while a connection change is being validated.
+
+The token and profile stay in Obsidian Keychain. A helper process receives them through stdin for that operation, never command-line arguments, environment secrets or Codex/Claude configuration files. The `youtrack-widget.json` snapshot is a local file excluded from Git. If an old local copy has the same issue ID from another account or server, import stops instead of mixing them; move the old copy outside Hub or use a separate vault.
 
 ## Slack
 
-Slack kutusu gelen birebir DM’leri, sana yapılan mention’ları ve seçersen bir not kanalı ile bir kullanıcı grubunu okur. **Senin attığın DM’ler** DM görünümüne dahil değildir. Grup DM’leri dahil değildir. Bu bir okunmamış mesaj sayacı veya tam arşiv değildir.
+The inbox reads incoming one-to-one DMs, personal mentions, and optionally a notes channel and user group. Your outgoing DMs and group DMs are excluded from the DM source. This is a bounded recent-message view, not an unread counter or full archive.
 
-1. [Slack app yönetiminde](https://api.slack.com/apps) kendi workspace’in için bir uygulama oluştur veya yöneticinin onayladığı uygulamayı kullan. **From scratch** yeterlidir; bot, server veya event subscription gerekmez.
-2. **OAuth & Permissions → User Token Scopes** altında `search:read`, `users:read`, `im:read`, `im:history` ekle. **Bot Token Scopes** bölümünü kullanma.
-3. Not kanalı istiyorsan `channels:read`, `channels:history` ekle. Kanal private ise ayrıca `groups:read`, `groups:history` gerekir.
-4. Kullanıcı grubu istiyorsan `usergroups:read` ekle. Workspace’inin bu özelliği desteklemesi ve senin grupta olman gerekir.
-5. **Install to Workspace** veya kapsam değiştiyse **Reinstall to Workspace** seç. Workspace yöneticisinin onayı gerekebilir. **User OAuth Token** (`xoxp-…`) değerini kendi bilgisayarında kopyala.
-6. Hub’da **Connect Slack** aç. Tokenı maskeli alana gir. **Notes channel** alanına istersen katıldığın kanalın adını, **User group** alanına istersen grubun handle’ını yaz. Örnekler: `my-notes`, `design-team`. Alanları boş bırakabilirsin; baştaki `#` / `@` temizlenir.
-7. **Connect Slack** seç. Hesap, seçtiğin kaynaklar ve Keychain kaydı doğrulanınca mesajlar açılır. Bağlantı varken kaynakları değiştirmek için ayarları aç; token alanını boş bırakırsan mevcut token korunur.
+1. In [Slack app management](https://api.slack.com/apps), create an app for your workspace or use an approved app. **From scratch** is sufficient; no bot, server or event subscription is needed.
+2. Under **OAuth & Permissions → User Token Scopes**, add `search:read`, `users:read`, `im:read`, `im:history`. Use **User**, not Bot Token Scopes.
+3. For a notes channel, also add `channels:read` and `channels:history`. A private channel additionally needs `groups:read` and `groups:history`.
+4. For a user group, also add `usergroups:read`. Your workspace must support groups and you must be a member of the selected group.
+5. Choose **Install to Workspace**, or **Reinstall to Workspace** after changing scopes. Administrator approval may be required. Copy the **User OAuth Token** (`xoxp-…`) on your computer.
+6. Open **Connect Slack** in Hub. Enter the token in the masked field. Optionally enter a joined **Notes channel**, such as `my-notes`, and a **User group** handle, such as `design-team`. Either field may be blank; leading `#` / `@` is removed.
+7. Choose **Connect Slack**. Messages appear after account, source and Keychain checks. To change sources later, open settings; a blank token field keeps the saved token.
 
-**All / DMs / @Me** ve yapılandırdıysan **#Notes / @Group** filtreleri vardır. Son yedi günün, kaynak başına en yeni 50 sonucu birleştirilir; her filtre en fazla 50 satır gösterir. Açık ve görünür widget yaklaşık beş dakikada bir yenilenir; Slack’in hız sınırı varsa bekler. Sınırlamalar **Slack settings → Inbox details** içindedir.
+Filters are **All / DMs / @Me**, plus **#Notes / @Group** when configured. The newest 50 results per source from the last seven days are combined; each filter shows at most 50 rows. A visible widget refreshes roughly every five minutes and respects Slack rate limits. **Slack settings → Inbox details** lists scope and truncation information.
 
-Slack’in `search.messages` erişimi, uygulama politikası ve workspace arama davranışı sonucu etkileyebilir. Kurum bu API’ye izin vermiyorsa yalnızca daha fazla kapsam eklemek sorunu çözmeyebilir. [Slack uygulama kurulumu](https://docs.slack.dev/quickstart/) ve [search.messages sınırları](https://docs.slack.dev/reference/methods/search.messages/).
+Slack’s `search.messages` access policy and workspace search behavior affect results. Adding scopes alone may not solve an organization-level API restriction. See [Slack app setup](https://docs.slack.dev/quickstart/) and [search.messages](https://docs.slack.dev/reference/methods/search.messages/).
 
-**Disconnect** yerel tokenı ve bellekteki mesajları kaldırır; Slack tarafındaki uygulama yetkisini iptal etmez. Sunucu tarafında kaldırmak için Slack’in uygulama yönetimini kullan. İkinci Mac’te ayrı bağlan; Keychain’i vault içine dışa aktarma.
+**Disconnect** clears the local token and in-memory messages; it does not revoke the Slack app’s server-side permissions. Use Slack app management to revoke them. Connect separately on each Mac; never export Keychain secrets into the vault.

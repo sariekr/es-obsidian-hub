@@ -39,13 +39,32 @@
               "type": "file-explorer",
               "state": {}
             }
+          },
+          {
+            "id": "hub-search",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": ""
+              }
+            }
+          },
+          {
+            "id": "hub-bookmarks",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
           }
-        ]
+        ],
+        "currentTab": 0
       }
     ],
     "direction": "horizontal",
-    "width": 260,
-    "collapsed": true
+    "width": 300,
+    "collapsed": false
   },
   "active": "hub-board",
   "lastOpenFiles": []

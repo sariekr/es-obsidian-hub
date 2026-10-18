@@ -1,6 +1,6 @@
 # ES Obsidian Hub runtime
 
-Version **1.0.0**, forked from the local dashboard runtime 0.25.1 for distribution as a clean, configurable starter vault. The historical plugin ID remains `aimultiple-kanban-extras`; the displayed name is ES Obsidian Hub.
+Version **1.0.1**, forked from the local dashboard runtime 0.25.1 for distribution as a clean, configurable starter vault. The historical plugin ID remains `aimultiple-kanban-extras`; the displayed name is ES Obsidian Hub.
 
 Read the repository [README](../../../README.md), [AGENTS](../../../AGENTS.md) and [connection guide](../../../docs/CONNECTIONS.md). No personal notes, snapshots, tokens, local settings, global tool configuration or source-vault history is part of this package.
 

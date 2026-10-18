@@ -1,90 +1,98 @@
 # ES Obsidian Hub
 
-**Notlarını yaz, istediğin notu board’a ekle, takvimini ve işlerini aynı yerde gör.**
+![ES Obsidian Hub with the folder sidebar, Scratchpad, three widgets and kanban board](docs/assets/hub-preview.jpg)
 
-Mac için hazır Obsidian başlangıç vault’u. Üç sütunlu kanban, Scratchpad ve Calendar / YouTrack / Slack kutuları birlikte gelir. Programlama bilgisi, Codex veya ücretli Obsidian Sync aboneliği gerekmez. Hesap bağlantıları isteğe bağlıdır.
+*Demo vault with sample notes only. Account connections are optional and start disconnected.*
 
-**[Hazır vault’u indir](https://github.com/sariekr/es-obsidian-hub/releases/latest/download/es-obsidian-hub.zip)** · **[Hesapları bağla](docs/CONNECTIONS.md)** · **[Codex ile kur](AGENTS.md)** · **[Sorun giderme](docs/TROUBLESHOOTING.md)**
+**Write a note, add it to your board, and keep your calendar and work in one place.**
 
-## İlk kurulum — daha önce Obsidian kullanmadıysan
+A ready-to-open Obsidian starter vault for Mac. Three kanban columns, a Scratchpad, and Calendar / YouTrack / Slack widgets come together with the folder sidebar already open. No coding, Codex installation, or paid Obsidian Sync subscription is required.
 
-1. [Obsidian’ı indir](https://obsidian.md/download) ve Applications klasörüne taşı. **1.11.4 veya daha yeni** bir sürüm kullan.
-2. Yukarıdaki **Hazır vault’u indir** bağlantısından ZIP’i indir. Finder’da çift tıklayıp aç. Çıkan **es-obsidian-hub** klasörünü örneğin `Documents` içine taşı. Klasörün tamamını taşı; yalnızca `Hub` klasörünü seçme.
-3. Obsidian’ı aç. **Open folder as vault → Open** seç. Az önce taşıdığın **es-obsidian-hub** klasörünü aç. “Vault”, notların ve ayarların bulunduğu bu klasör demek.
-4. İlk açılışta kodu çalıştırmayı kabul ediyorsan **Trust author and enable plugins** seç. Açılan ayar penceresini kapat. Eklentilerin adları **Kanban Bases View** ve **ES Obsidian Hub**; ikisi de açık olmalı.
-5. **Kanban Board** sekmesi hazır gelir. Üstte Scratchpad, altında Calendar / YouTrack / Slack ve **Backlog → In-Progress → Done** sütunlarını görmelisin. İlk etkinleştirmede kalabilen “Unknown view type” ekranı otomatik yeniden açılır. Yine de kalırsa sekmeyi kapatıp dosya listesinden `Hub → Kanban Board` dosyasını aç.
+**[Download the ready-to-use vault](https://github.com/sariekr/es-obsidian-hub/releases/latest/download/es-obsidian-hub.zip)** · **[Connect your accounts](docs/CONNECTIONS.md)** · **[Install with Codex](AGENTS.md)** · **[Troubleshooting](docs/TROUBLESHOOTING.md)**
 
-`.obsidian` gizli klasörü ZIP’in içindedir; Finder’da görmek için `Cmd+Shift+.` kullanabilirsin. Eklentileri mağazada arayıp tek tek indirmen gerekmez. **Trust** onayı Obsidian’ın kendi adımıdır; paket bunu atlatmaz. [Obsidian’ın vault açma](https://help.obsidian.md/manage-vaults) ve [eklenti etkinleştirme](https://help.obsidian.md/community-plugins) belgeleri.
+## First setup — even if you have never used Obsidian
 
-> GitHub’daki **Code → Download ZIP** veya `git clone` da çalışır. En kolay yol yukarıdaki hazır vault ZIP’idir. Günlük notlarını bu public repoya push etme; kişisel vault’un yerel kalır.
+1. [Download Obsidian](https://obsidian.md/download) and move it to Applications. Use **1.11.4 or newer**.
+2. Download the vault ZIP above. Double-click it in Finder, then move the entire **es-obsidian-hub** folder somewhere permanent, such as Documents. Keep the whole folder, not just `Hub`.
+3. Open Obsidian. Choose **Open folder as vault → Open**, then select **es-obsidian-hub**. A “vault” is simply the folder holding your notes and settings.
+4. If you accept running the included plugins, choose **Trust author and enable plugins**. Close the settings window. Both **Kanban Bases View** and **ES Obsidian Hub** should be enabled.
+5. **Kanban Board** opens automatically. The left sidebar starts open, with **Files / Search / Bookmarks** tabs at the top and Files selected. The narrow vertical ribbon is hidden. You should see Scratchpad above Calendar / YouTrack / Slack, then **Backlog → In-Progress → Done**.
 
-## İlk iki dakikada dene
+The hidden `.obsidian` folder is included in the ZIP. Finder’s `Cmd+Shift+.` reveals it. You do not need to find and install the plugins separately. Obsidian’s first-run trust decision remains yours. See the official [vault guide](https://help.obsidian.md/manage-vaults) and [community plugin guide](https://help.obsidian.md/community-plugins).
 
-| Yapmak istediğin | Tıklayacağın yer |
+If an “Unknown view type” screen lingers after first trust, ES Hub reopens that board automatically. If it persists, close the board tab and open `Hub → Kanban Board` from Files.
+
+> **Code → Download ZIP** and `git clone` also work. The release ZIP is the simplest option. Keep your everyday vault local; do not push personal notes to this public repository.
+
+## Try it in two minutes
+
+| What you want to do | Where to click |
 | --- | --- |
-| Hızlı bir düşünceyi saklamak | Üstteki **Scratchpad → Save**. Yeni, normal bir Quick Note oluşur. Yazmak veya pencereyi kapatmak tek başına not oluşturmaz. |
-| Doğrudan bir kart oluşturmak | Backlog başlığındaki **Add note**. Yeni kart yazı sekmesinde açılır, board açık kalır. |
-| Mevcut bir notu karta çevirmek | Notu aç → başlığın üstündeki **Add to board**. Yazın ve dosya konumu korunur. |
-| Kartı board’dan kaldırmak | **Remove from board**. Not silinmez. |
-| Durum, öncelik, tür veya etiket değiştirmek | Notun üstündeki **Status / Priority / Type / Tags**. Kartın sağ tık menüsü de kullanılabilir. |
-| Notu klasöre çevirmek | **Make a folder**. Not ve ona ait içerik bir klasörde toplanabilir. |
-| Notu silmek | En sağdaki ayrı **Delete note**. Obsidian’ın onay ve çöp kutusu akışı açılır. |
-| Kutuları küçültmek veya gizlemek | Altlarındaki ayırıcıyı sürükle; **Customize** ile seç, **Hide widgets** ile gizle. Scratchpad görünür kalır. |
+| Save a quick thought | **Scratchpad → Save** creates a new ordinary Quick Note. Typing or closing a window alone does not create a note. |
+| Create a card directly | **Add note** in the Backlog header. A new writing tab opens and the board stays open. |
+| Turn an existing note into a card | Open a note → **Add to board** above its title. Its content and location stay intact. |
+| Remove a card from the board | **Remove from board** keeps the note. |
+| Change status, priority, type or tags | Use **Status / Priority / Type / Tags** above the note, or right-click a card. |
+| Wrap a note in its own folder | **Make a folder** creates a containing folder and moves the note into it. |
+| Delete a note | The separate **Delete note** action uses Obsidian’s confirmation and trash flow. |
+| Resize or hide widgets | Drag their shared separator, choose widgets in **Customize**, or use **Hide widgets**. Scratchpad stays visible. |
 
-`Hub/Learning/Try Add to board.md` sıradan bir örnek nottur. Açıp **Add to board** ile dene. Board’daki iki örnek kartı da değiştirebilir veya silebilirsin. Kartları sürükleyerek sütun değiştirebilirsin; sütun içindeki sıra öncelik ve tarihe göre düzenlenir.
+Open `Hub/Learning/Try Add to board.md` and try **Add to board**. Edit or delete the sample cards. Drag cards between columns; within a column, priority and date determine their order.
 
-## Kendi klasörlerin
+## Make the folders yours
 
 ```text
 Hub/
-├── Kanban Board.base        # Ana ekran
-├── Work/                    # Örnek iş alanı — değiştirilebilir
-├── Personal/                # Örnek kişisel alan — değiştirilebilir
-├── Learning/                # Örnek öğrenme alanı — değiştirilebilir
-├── Quick Notes/             # Scratchpad ve Add note hedefi
-├── YouTrack/                # Yalnızca seçerek aktardığın işler
-├── Attachments/             # Ekler
-├── _kanban/                 # Board şeması
-└── _priority-seeds/         # Öncelik seçeneklerini korur
+├── Kanban Board.base        # Your home screen
+├── Work/                    # Replaceable sample category
+├── Personal/                # Replaceable sample category
+├── Learning/                # Replaceable sample category
+├── Quick Notes/             # Scratchpad and Add note destination
+├── YouTrack/                # Issues you explicitly choose to import
+├── Attachments/             # Attachments
+├── _kanban/                 # Shared board schema
+└── _priority-seeds/         # Keeps priority choices available
 ```
 
-**Thesis, MSc veya bir şirkete ait notlarla gelmez.** `Work`, `Personal`, `Learning` örnektir. Obsidian dosya listesinde `Hub` altına örneğin `Projects` klasörü ekle; **Type** listesinde görünür. Kendi notlarını alt klasörlere yerleştirebilirsin. `Attachments`, `.` veya `_` ile başlayan klasörler Type sayılmaz.
+`Work`, `Personal` and `Learning` are placeholders. Create a folder such as `Projects` directly under `Hub`; it appears in **Type** automatically. Nested folders are supported. `Attachments` and folders beginning with `.` or `_` are excluded from Type choices.
 
-**Type seçmek notu ilgili Hub klasörüne taşır.** Aynı Type’ı seçmek mevcut alt klasör yerleşimini korur. Klasör notlarında klasörün içeriği birlikte taşınır. Klasörü yeniden adlandırmak mevcut notların `category` değerlerini kendiliğinden yeniden yazmaz; gerekiyorsa notta Type’ı tekrar seç.
+**Choosing Type moves the note into that Hub folder.** Choosing its current Type keeps nested placement. A folder note carries its containing folder and contents. Renaming a folder does not automatically rewrite existing `category` values; select the new Type on affected notes if needed.
 
-`Hub`, `Kanban Board.base`, `Quick Notes`, `Attachments`, `_kanban` ve `_priority-seeds` paket akışı için sabit yollardır. Bunları özelleştirmek istersen önce [AGENTS.md](AGENTS.md) içindeki kod haritasını kullan. Board üyeliği Hub içindeki `kanban` etiketidir; dosya başına ayrı kart veritabanı yoktur.
+Keep `Hub`, `Kanban Board.base`, `Quick Notes`, `Attachments`, `_kanban` and `_priority-seeds` for the supplied workflow. To change those paths, use the code map in [AGENTS.md](AGENTS.md). Board membership is a `kanban` tag on notes under Hub.
 
-## Kendi hesapların
+## Connect your own accounts
 
-| Bağlantı | Gereken | Kurulum yeri |
+| Connection | What you need | Where to start |
 | --- | --- | --- |
-| Google Calendar | Kendi Google hesabın ve Desktop OAuth istemcisi; uygun hesaplarda özel iCal adresi de kullanılabilir | **Connect Google Calendar** |
-| YouTrack | Kendi sunucun, login’in, proje anahtarın, permanent token ve **Python 3.11+**; sunucuda `/mcp` desteği | **YouTrack settings** |
-| Slack | Workspace’inin onayladığı Slack uygulaması ve kendi **User OAuth Token**’ın | **Connect Slack**; not kanalı ve kullanıcı grubu isteğe bağlı |
+| Google Calendar | Your Google account and a Desktop OAuth client; a private iCal address works where available | **Connect Google Calendar** |
+| YouTrack | Your server, login, project key, permanent token, **Python 3.11+**, and server `/mcp` support | **YouTrack settings** |
+| Slack | A workspace-approved Slack app and your **User OAuth Token** | **Connect Slack**; notes channel and user group are optional |
 
-Adım adım anlatım: **[Hesap bağlantıları](docs/CONNECTIONS.md)**. Board, not araçları, Scratchpad, takvim ve Slack için Python/Node/npm kurulmaz. Python yalnızca YouTrack yardımcısına gerekir. Codex, Claude veya MCP istemcisi kurulumu gerekmez; yardımcı doğrudan senin YouTrack sunucunun MCP uç noktasını kullanır.
+Follow the **[account connection guide](docs/CONNECTIONS.md)**. The board, note tools, Scratchpad, Calendar and Slack need no separate Python, Node or npm installation. Python is only for YouTrack. Codex, Claude and a separate MCP client are not required; the helper connects directly to your YouTrack server’s MCP endpoint.
 
-YouTrack’in **remote status sync** seçeneği başlangıçta kapalıdır. Açarsan seçerek aktardığın kartı bir sütuna taşımak uzaktaki issue’nun **State** alanını da değiştirir; Done’dan çıkarmak işi yeniden açabilir. Hangi sütunun hangi State’e karşılık geldiğini sen belirlersin. Açılışta toplu eşitleme yapılmaz. **Refresh** yalnızca listeyi okur.
+YouTrack **remote status sync starts off**. If you enable it, moving an imported card changes the remote issue’s **State**; moving out of Done can reopen it. You choose the three State mappings. Startup never bulk-syncs existing cards. **Refresh** only reads the list.
 
-## Güncelleme ve verilerin
+## Privacy and updates
 
-Bu depo bir başlangıç şablonudur. Günlük kullanımda yazdıkların Markdown dosyaları olarak kendi vault’unda kalır. Tokenlar cihazın **Obsidian Keychain** alanındadır; repo veya not dosyalarında saklanmaz. Slack mesajları ve takvim etkinlikleri bellektedir. YouTrack listesi yerel bir JSON önbelleğine, seçerek aktardığın işler ve ekler vault’a kaydedilir.
+This repository contains starter notes and code. It does not contain the maintainer’s personal notes, account snapshots, messages, OAuth files or tokens. The preview is from a separate demo vault with sample notes. Your connections start disconnected.
 
-Yeni sürümde önce vault’unu yedekle ve Obsidian’ı kapat. [Güncelleme rehberini](docs/UPDATING.md) izle; yeni ZIP’i kullandığın vault’un tamamının üzerine açma. Her Mac’te hesaplarını yeniden bağla. Scratchpad taslağı cihaz yerelidir; cihaz değiştirmeden **Save** kullan.
+Your writing stays in Markdown files in your own vault. Tokens are stored in local **Obsidian Keychain**. Slack messages and calendar events stay in memory. YouTrack caches its list in a local JSON file; explicitly imported issues and attachments become vault files.
 
-## Codex’e verilecek kısa istek
+Back up your vault and close Obsidian before updating. Follow the [update guide](docs/UPDATING.md); do not unpack a new starter ZIP over your entire working vault. Connect accounts separately on each Mac. Scratchpad recovery is device-local, so **Save** before switching devices.
+
+## A prompt for Codex
 
 ```text
-Bu repodaki AGENTS.md ve README.md dosyalarını oku.
-Mac’imde ES Obsidian Hub’ı ayrı, yeni bir vault olarak kur.
-Mevcut notlarımın veya Obsidian ayarlarımın üzerine yazma.
-Board’un açıldığını ve Add to board / Scratchpad’i örnek notlarla doğrula.
-Hesaplarımı bağlantı rehberine göre benim gireceğim yerel alanlarla kur;
-token veya OAuth JSON içeriğini sohbete isteme.
+Read AGENTS.md and README.md in this repository.
+Install ES Obsidian Hub as a separate new vault on my Mac.
+Do not overwrite my existing notes or Obsidian settings.
+Verify the open folder sidebar, board, Add to board and Scratchpad using disposable notes.
+Help me connect my accounts using the connection guide and private local input fields.
+Do not ask me to paste tokens or OAuth JSON into chat.
 ```
 
-## Sürüm ve katkı
+## Version and contributions
 
-İlk paylaşılabilir sürüm: **1.0.0**. Mac masaüstü için hazırlanmıştır. Windows, Linux ve mobil bu sürümün doğrulama kapsamına dahil değildir. Eklenti mağazasında bağımsız yayımlanmış bir ürün değildir; hazır vault ile gelir.
+Current starter release: **1.0.1**. Prepared for macOS desktop. Windows, Linux and mobile are outside this release’s verification scope. This is a bundled starter vault, not a separately published community-store plugin.
 
-[Doğrulama kaydı](docs/VERIFICATION.md) ve [bakım talimatları](AGENTS.md). Üçüncü taraf bileşenler kendi lisanslarıyla dağıtılır: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). ES Hub kodu ve başlangıç belgeleri MIT lisanslıdır.
+See [verification](docs/VERIFICATION.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed; third-party components keep their own licenses.

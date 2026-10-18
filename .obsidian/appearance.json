@@ -1,7 +1,7 @@
 {
   "cssTheme": "AnuPpuccin",
   "theme": "system",
-  "showRibbon": true,
+  "showRibbon": false,
   "enabledCssSnippets": [
     "kanban-column-fill-width"
   ]
