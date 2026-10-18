@@ -95,4 +95,4 @@ Do not ask me to paste tokens or OAuth JSON into chat.
 
 Current starter release: **1.0.1**. Prepared for macOS desktop. Windows, Linux and mobile are outside this release’s verification scope. This is a bundled starter vault, not a separately published community-store plugin.
 
-See [verification](docs/VERIFICATION.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed; third-party components keep their own licenses.
+See [verification](docs/VERIFICATION.md), [development workflow](docs/DEVELOPMENT.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed; third-party components keep their own licenses.
