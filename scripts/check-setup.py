@@ -65,10 +65,10 @@ def main():
         try:
             result = subprocess.run([str(python),'-I','-S','-B','-c','import sys;print(".".join(map(str,sys.version_info[:3])));sys.exit(sys.version_info<(3,11))'],capture_output=True,text=True,timeout=5)
             if result.returncode == 0: print('YouTrack Python: compatible (' + result.stdout.strip() + ').')
-            else: print('OPTIONAL YouTrack: selected Python needs 3.11+. Board/Calendar/Slack still work.')
+            else: print('OPTIONAL YouTrack: selected Python needs 3.11+. Board/Calendar/Mail/Slack still work.')
         except (OSError,subprocess.TimeoutExpired):
             print('OPTIONAL YouTrack: could not run the selected Python.')
-    else: print('OPTIONAL YouTrack: install Python 3.11+ before connecting. Board/Calendar/Slack do not need it.')
+    else: print('OPTIONAL YouTrack: install Python 3.11+ before connecting. Board/Calendar/Mail/Slack do not need it.')
     print('Open Obsidian to verify first-run trust, actual UI and your own account connections.')
     return 0
 

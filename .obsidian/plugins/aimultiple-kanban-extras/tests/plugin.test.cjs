@@ -9,6 +9,134 @@ const taxonomy = JSON.parse(fs.readFileSync(path.join(root, '../../../Hub/_kanba
 Object.assign(taxonomy,{folder_to_category:{Data:'data',MSc:'msc',Personal:'personal',Other:'other'},view_to_folder:{Data:'Hub/Data',MSc:'Hub/MSc',Benchmark:'Hub/Benchmark'}});
 const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('Calendar and Mail merge legacy slots without writing startup settings or losing hidden choices',async()=>{
+ for (const [saved,expected] of [
+  [['calendar','youtrack','mail'],['calendar','youtrack','slack']],
+  [['mail','slack','youtrack'],['calendar','youtrack','slack']],
+  [['calendar','mail','slack'],['calendar','youtrack','slack']],
+  [['mail','youtrack'],['calendar','youtrack']],
+  [['slack'],['slack']],
+  [[],[]],
+ ]) {
+  const f=fixture([],{homeModules:saved,homeLayoutVersion:1,slackModuleKnown:true,other:'keep'});await f.start();
+  assert.deepEqual(Array.from(f.plugin.homeModules),expected);assert.equal(f.saves.length,0);f.plugin.unload();
+ }
+});
+
+test('Grouped widget visibility saves preserve unrelated settings and failures keep the previous layout',async()=>{
+ const f=fixture([],{homeModules:['calendar','youtrack','mail'],homeLayoutVersion:1,other:'keep'});await f.start();
+ await f.plugin.setHomeModule('calendar',false);
+ assert.deepEqual(f.saves.at(-1).homeModules,['youtrack','slack']);assert.equal(f.saves.at(-1).other,'keep');
+ assert.equal(f.saves.at(-1).homeLayoutVersion,2);
+ await f.plugin.setHomeModule('calendar',true);assert.deepEqual(Array.from(f.plugin.homeModules),['calendar','youtrack','slack']);
+ await assert.rejects(()=>f.plugin.setHomeModule('mail',true),/module/i);
+ f.plugin.saveData=async()=>{throw Error('disk full');};
+ await assert.rejects(()=>f.plugin.setHomeModule('calendar',false),/disk full/);
+ assert.deepEqual(Array.from(f.plugin.homeModules),['calendar','youtrack','slack']);assert.equal(f.plugin.homeSaving,false);f.plugin.unload();
+});
+
+test('Mail stays closed and disconnected on startup, with no settings writes or automatic read',async()=>{
+ const f=fixture();let calls=0;f.plugin.fetchMailSnapshot=async()=>{calls++;};await f.start();
+ assert.equal(f.plugin.mailEnabled,false);assert.equal(f.plugin.mailSnapshot,null);
+ assert.deepEqual(Array.from(f.plugin.homeModules),['calendar','youtrack','slack']);
+ assert.equal(calls,0);assert.equal(f.saves.length,0);f.plugin.unload();
+});
+
+function mailFixtureSnapshot(){return {schema:1,accounts:[{id:'a',name:'Example',limited:false}],rows:[
+ {id:12,accountId:'a',mailbox:'INBOX',messageId:'example@local.test',subject:'<script>literal</script>',sender:'Example sender',receivedAt:Date.now()-1000,read:false}
+]};}
+
+test('Mail validates snapshots, shares busy state, keeps the last result on error and disconnects locally',async()=>{
+ const f=fixture();await f.start();let release,calls=0;
+ f.plugin.mailSupported=()=>true;f.plugin.fetchMailSnapshot=()=>{calls++;return new Promise(r=>release=r);};
+ assert.equal(typeof f.plugin.refreshMail,'function');
+ const job=f.plugin.refreshMail(true);await f.flush();await f.plugin.refreshMail(true);assert.equal(calls,1);
+ release(mailFixtureSnapshot());await job;
+ assert.equal(f.plugin.mailEnabled,true);assert.equal(f.plugin.mailSnapshot.rows.length,1);assert.equal(f.saves.length,0);
+ const snapshot=f.plugin.mailSnapshot;
+ f.plugin.fetchMailSnapshot=async()=>({...mailFixtureSnapshot(),rows:[{...mailFixtureSnapshot().rows[0],accountId:'not-in-snapshot'}]});
+ await f.plugin.refreshMail();assert.equal(f.plugin.mailSnapshot,snapshot);assert.match(f.plugin.mailError,/valid|read|refresh/i);
+ await f.plugin.disconnectMail();assert.equal(f.plugin.mailEnabled,false);assert.equal(f.plugin.mailSnapshot,null);f.plugin.unload();
+});
+
+test('Mail ignores pending results after disconnect and only auto reads while visible',async()=>{
+ const f=fixture();await f.start();f.plugin.mailSupported=()=>true;let release,calls=0;
+ f.plugin.fetchMailSnapshot=()=>{calls++;return new Promise(r=>release=r);};
+ assert.equal(typeof f.plugin.autoRefreshMail,'function');
+ f.plugin.mailEnabled=true;f.plugin.mailNextRefresh=0;
+ assert.equal(f.plugin.autoRefreshMail(),false);assert.equal(calls,0);
+ const job=f.plugin.refreshMail();await f.flush();await f.plugin.disconnectMail();release(mailFixtureSnapshot());await job;
+ assert.equal(f.plugin.mailSnapshot,null);assert.equal(f.plugin.mailEnabled,false);f.plugin.unload();
+});
+
+function groupedHomeEntry(f) {
+ const node=()=>{const n=new Dom();n.isConnected=true;n.getClientRects=()=>[{}];n.hidden=false;n.append=(...items)=>n.children.push(...items);n.replaceChildren=()=>{n.children=[];};n.focus=()=>{f.doc.activeElement=n;};return n;};
+ f.doc.createElement=()=>node();
+ const entry={scope:{ownerDocument:f.doc},home:node(),homePanel:'calendar',calendarPanel:node(),mailPanel:node(),calendarMainTab:node(),mailMainTab:node(),mailRefresh:node(),
+  calendarMode:'month',selectedDay:'2026-11-19',calendarMonth:'2026-11',mailAccount:'a',mailFilter:'unread',agenda:node(),mailList:node(),panelScroll:{}};
+ for (const name of ['calendarDays','monthTab','agendaTab','calendarPrevious','calendarNext','calendarConnect','calendarRefresh']) entry[name]=node();
+ entry.home.ownerDocument=f.doc;entry.agenda.scrollTop=48;entry.mailList.scrollTop=120;
+ f.plugin.toolbars.set({},entry);return entry;
+}
+
+test('Calendar and Mail tabs preserve each view and scroll without settings writes or reconnecting',async()=>{
+ const f=fixture();await f.start();const entry=groupedHomeEntry(f);let reads=0;
+ f.plugin.mailEnabled=false;f.plugin.fetchMailSnapshot=async()=>{reads++;return mailFixtureSnapshot();};
+ assert.equal(typeof f.plugin.setHomePanel,'function');
+ f.plugin.setHomePanel(entry,'mail');
+ assert.equal(entry.calendarPanel.hidden,true);assert.equal(entry.mailPanel.hidden,false);
+ assert.equal(entry.mailMainTab.getAttribute('aria-selected'),'true');assert.equal(entry.mailMainTab.tabIndex,0);assert.equal(entry.calendarMainTab.tabIndex,-1);
+ assert.equal(entry.calendarMonth,'2026-11');assert.equal(entry.selectedDay,'2026-11-19');assert.equal(entry.calendarMode,'month');
+ assert.equal(entry.mailAccount,'a');assert.equal(entry.mailFilter,'unread');assert.equal(entry.mailList.scrollTop,120);
+ f.plugin.setHomePanel(entry,'calendar');assert.equal(entry.calendarPanel.hidden,false);assert.equal(entry.mailPanel.hidden,true);assert.equal(entry.mailRefresh.hidden,true);
+ assert.equal(entry.agenda.scrollTop,48);assert.equal(reads,0);assert.equal(f.saves.length,0);
+ f.plugin.setHomePanel(entry,'unknown');assert.equal(entry.homePanel,'calendar');f.plugin.toolbars.clear();f.plugin.unload();
+});
+
+test('Mail automatic reads require its active tab in a visible grouped widget and respect the cooldown',async()=>{
+ const f=fixture();await f.start();const entry=groupedHomeEntry(f);let reads=0,release;
+ f.plugin.mailEnabled=true;f.plugin.mailNextRefresh=0;f.plugin.refreshHomes=()=>{};
+ f.plugin.fetchMailSnapshot=()=>{reads++;return new Promise(r=>release=r);};
+ assert.equal(f.plugin.autoRefreshMail(),false);
+ f.plugin.setHomePanel(entry,'mail');assert.equal(reads,1);assert.equal(f.plugin.mailBusy,true);
+ f.plugin.setHomePanel(entry,'calendar');f.plugin.setHomePanel(entry,'mail');assert.equal(reads,1);
+ release(mailFixtureSnapshot());await f.flush();
+ f.plugin.setHomePanel(entry,'calendar');f.plugin.setHomePanel(entry,'mail');assert.equal(reads,1);
+ f.plugin.mailNextRefresh=0;f.plugin.homeCollapsed=true;assert.equal(f.plugin.autoRefreshMail(),false);
+ f.plugin.homeCollapsed=false;f.plugin.homeModules=['youtrack','slack'];assert.equal(f.plugin.autoRefreshMail(),false);
+ f.plugin.toolbars.clear();f.plugin.unload();
+});
+
+test('Returning to Calendar starts a missing month that was deferred while Mail was visible',async()=>{
+ const f=fixture();await f.start();const entry=groupedHomeEntry(f);const reads=[];
+ f.plugin.calendarEnabled=true;f.plugin.calendarCache={kind:'google',fetchedAt:123,months:new Map([['2026-10',[]]])};
+ f.plugin.refreshCalendar=async(manual,month)=>{reads.push(month);};
+ f.plugin.setHomePanel(entry,'mail');
+ f.plugin.updateCalendarAgenda(entry);assert.equal(reads.length,0);assert.match(entry.agenda.children.at(-1).textContent,/Loading this month/);
+ f.plugin.setHomePanel(entry,'calendar');assert.deepEqual(reads,['2026-11']);assert.equal(entry.agenda.scrollTop,48);
+ f.plugin.toolbars.clear();f.plugin.unload();
+});
+
+test('Mail rejects duplicate identities, excessive per-account rows, bad dates and raw failures atomically',async()=>{
+ const f=fixture();await f.start();f.plugin.mailSupported=()=>true;
+ f.plugin.fetchMailSnapshot=async()=>mailFixtureSnapshot();await f.plugin.refreshMail(true);
+ const good=f.plugin.mailSnapshot, sample=mailFixtureSnapshot();
+ for(const bad of [
+  {...sample,rows:[sample.rows[0],sample.rows[0]]},
+  {...sample,rows:Array.from({length:51},(_,i)=>({...sample.rows[0],id:i+1}))},
+  {...sample,rows:[{...sample.rows[0],receivedAt:NaN}]},
+  {...sample,accounts:[...sample.accounts,...sample.accounts]},
+ ]){f.plugin.fetchMailSnapshot=async()=>bad;await f.plugin.refreshMail();assert.equal(f.plugin.mailSnapshot,good);}
+ f.plugin.fetchMailSnapshot=async()=>{throw Error('private content must not escape');};await f.plugin.refreshMail();
+ assert.ok(!f.plugin.mailError.includes('private content'));assert.equal(f.plugin.mailSnapshot,good);f.plugin.unload();
+});
+
+test('Mail connection storage failure does not enable reads or commit a snapshot',async()=>{
+ const f=fixture();await f.start();f.plugin.mailSupported=()=>true;f.plugin.fetchMailSnapshot=async()=>mailFixtureSnapshot();
+ f.plugin.quickDraftStorage.setItem=()=>{throw Error('blocked');};await f.plugin.refreshMail(true);
+ assert.equal(f.plugin.mailEnabled,false);assert.equal(f.plugin.mailSnapshot,null);assert.match(f.plugin.mailError,/save.*preference/i);f.plugin.unload();
+});
+
 function resizeEntry(f, panelHeight=900) {
  const props={}; const home=new Dom();home.isConnected=true;home.style={setProperty:(k,v)=>{props[k]=v;},getPropertyValue:k=>props[k]};
  home.classList={toggle(){}};home.getBoundingClientRect=()=>({top:0});

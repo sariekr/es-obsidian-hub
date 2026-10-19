@@ -457,7 +457,7 @@
   border-radius: 16px;
   background: var(--background-primary);
 }
-.aim-home-tile > :not(.aim-home-bookmark):not(.aim-home-source-details):not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-youtrack-list):not(.aim-home-note-list):not(.aim-home-shortcut-list):not(.aim-home-pinned-links):not(.aim-home-pin-empty):not(.aim-home-scratch-input):not(.aim-home-slack-list) { flex-shrink: 0; }
+.aim-home-tile > :not(.aim-home-bookmark):not(.aim-home-source-details):not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-youtrack-list):not(.aim-home-note-list):not(.aim-home-shortcut-list):not(.aim-home-pinned-links):not(.aim-home-pin-empty):not(.aim-home-scratch-input):not(.aim-home-slack-list):not(.aim-home-mail-list):not(.aim-home-shared-panel) { flex-shrink: 0; }
 .aim-home-tile-heading {
   justify-content: space-between;
   gap: 8px;
@@ -787,3 +787,33 @@
 .aim-home-setup label.aim-home-sync-toggle { display: flex; align-items: center; gap: 8px; }
 .aim-home-setup input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; flex: 0 0 16px; }
 .aim-home-setup input:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+
+/* Calendar and Mail share one tile; each view keeps its own mounted content. */
+.aim-home-inbox-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:34px; margin-bottom:8px; border-bottom:1px solid var(--aim-home-border); }
+.aim-home-inbox-tabs { display:flex; align-items:center; gap:16px; }
+.aim-home .aim-home-inbox-tabs button { position:relative; padding:4px 0 10px; border-radius:3px; font-size:14px; font-weight:600; color:var(--aim-home-secondary); }
+.aim-home .aim-home-inbox-tabs button[aria-selected="true"] { color:var(--text-normal); }
+.aim-home .aim-home-inbox-tabs button[aria-selected="true"]::after { content:''; position:absolute; height:2px; inset:auto 0 -1px; background:var(--interactive-accent); border-radius:2px; }
+.aim-home-shared-panel { display:flex; flex-direction:column; flex:1 1 0; min-width:0; min-height:0; }
+.aim-home-shared-panel > :not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-mail-list) { flex-shrink:0; }
+.aim-home-shared-panel:focus-visible { outline:2px solid var(--interactive-accent); outline-offset:2px; border-radius:4px; }
+.aim-home-calendar-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; min-height:28px; margin-bottom:4px; }
+.aim-home-calendar-toolbar h3 { font-size:13px; font-weight:600; }
+.aim-home-month-actions { flex-shrink:0; margin-left:auto; }
+.aim-home-mail-row:focus-visible, .aim-home-mail-account:focus-visible { outline:2px solid var(--interactive-accent); outline-offset:2px; }
+.aim-home-mail-filters { display:flex; align-items:center; gap:4px; margin:2px 0 8px; min-width:0; }
+.aim-home-mail-filters button[aria-pressed="true"] { background:var(--background-modifier-hover); color:var(--text-accent); }
+.aim-home-mail-account { min-width:0; max-width:58%; margin-left:auto; font:inherit; color:var(--text-normal); height:28px; }
+.aim-home-mail-list { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:thin; padding:0 4px 0 0; }
+.aim-home .aim-home-mail-row { display:block; width:100%; height:auto; min-height:72px; padding:10px 3px; margin:0; border:0; border-radius:5px; box-shadow:none; white-space:normal; text-align:left; color:var(--text-normal); background:transparent; cursor:pointer; }
+.aim-home .aim-home-mail-row + .aim-home-mail-row { border-top:1px solid var(--aim-home-border); }
+.aim-home .aim-home-mail-row:hover { background:var(--background-modifier-hover); }
+.aim-home-mail-meta { display:flex; gap:8px; justify-content:space-between; align-items:baseline; }
+.aim-home-mail-sender { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-mail-time { flex-shrink:0; color:var(--aim-home-secondary); font-size:11px; font-variant-numeric:tabular-nums; }
+.aim-home-mail-subject { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.5; margin-top:3px; overflow-wrap:anywhere; }
+.aim-home-mail-row.is-unread .aim-home-mail-subject { font-weight:600; }
+.aim-home-mail-row.is-unread .aim-home-mail-subject::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--interactive-accent); margin-right:6px; vertical-align:middle; }
+.aim-home-mail-account-label { display:block; font-size:11px; color:var(--aim-home-secondary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-mail-message { font-size:12px; line-height:1.4; color:var(--text-error); margin:6px 0; }
+.aim-home-mail-message[hidden] { display:none; }

@@ -1,5 +1,17 @@
 # Verification record
 
+## 1.1.0: 19 October 2026
+
+Mail and the shared Calendar / Mail tile were selectively ported from the maintainer's 0.27.0 runtime. The public fork's configurable accounts, account-bound YouTrack imports, default-off State sync, optional Slack sources and first-trust recovery remain intact. No personal notes, account snapshots or settings were copied.
+
+- **192 Node tests and 21 Python tests passed.** Ten Mail/tab behavior tests failed before the port and passed afterward. Three additional mocked-process tests verify the fixed osascript executable, literal arguments without a shell, time/output limits, safe errors and exact-message opening. No real email is opened by these tests.
+- The actual-runtime browser fixture passed in desktop dark, 800px light and 480px dark panels. Mail checks cover synthetic connection data, the 50-row limit, account/unread filters and subjects containing HTML-like text. They verify that errors retain the previous list and that settings contain no Mail metadata. Tab navigation, keyboard controls, filter/scroll preservation, fixed height and layout reload also passed. Existing Scratchpad and Slack checks also pass. The preview generator now escapes inline closing-script text and resets its synthetic Mail preference between runs. Other browser storage remains untouched.
+- Native Obsidian **1.11.7** loaded 1.1.0 in the independent disconnected demo vault. A 1024×800 window showed the open sidebar, header Scratchpad, three board columns and the shared tile at its 300px minimum. Mail displayed Connect Mail with no account connection. Left Arrow restored Calendar → Month. No real accounts were connected or messages opened in this demo.
+- **3 distribution tests passed.** The pristine checker and release builder passed. ZIP members exactly match the reviewed allowlist plus `distribution.json`, including the new AppleScript and bridge tests. Repeated builds produced the same SHA-256. Changed runtime hashes were updated deliberately. Unchanged source/vendor files retained their hashes.
+- A bounded text scan of the reviewed package found no real-token patterns or private source paths/account identifiers. Private settings, account snapshots, `.local`, `.git`, personal notes and OAuth files are excluded from the release. One agent reviewed the source and package within this scope. A comprehensive secret audit and independent security certification were outside the review.
+
+The AppleScript bridge is byte-identical to the local 0.27.0 implementation, where real inbox metadata reads were previously verified. The public release was tested with mocked processes, synthetic browser data and a disconnected native demo. New live Mail reads, permission-denial prompts, opening real messages, the full five-minute interval, a second Mac, Intel Macs and other operating systems remain unverified. The README image remains the labeled 1.0.1 demo capture.
+
 ## 1.0.1 — 18 October 2026
 
 This update changes starter appearance/workspace defaults, English documentation and presentation assets. Integration runtime behavior is unchanged; the unused legacy daily-note fallback headings are now English.

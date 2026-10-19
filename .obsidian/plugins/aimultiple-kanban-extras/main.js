@@ -11,7 +11,8 @@ const HOME_SHORTCUTS = "Hub/Personal/Home shortcuts.md";
 const DAILY_FOLDER = "Daily Notes";
 const DAILY_TEMPLATE = "Templates/Home Daily Note.md";
 const HOME_WIDGETS = { calendar: 'Calendar', continue: 'Continue', links: 'Pinned links', recent: 'Recent notes', shortcuts: 'Your places', youtrack: 'YouTrack' };
-const HOME_MODULES = {calendar:'Calendar',youtrack:'YouTrack',slack:'Slack · Inbox'};
+const HOME_MODULES = {calendar:'Calendar / Mail',youtrack:'YouTrack',slack:'Slack · Inbox'};
+const DEFAULT_HOME_MODULES = ['calendar','youtrack','slack'];
 const SLACK_SECRET = 'es-hub-slack-user';
 const YOU_TRACK_SECRET = 'es-hub-youtrack';
 const SLACK_FILTERS = {all:'All',dm:'DMs',mention:'@Me',channel:'#Notes',group:'@Group'};
@@ -127,6 +128,11 @@ class AIMultipleKanbanExtras extends Plugin {
     this.quickDraftKey = 'es-hub:quick-draft:' + draftScope;
     try { this.quickDraftStorage = this.app.workspace.containerEl.ownerDocument.defaultView?.localStorage; } catch (_) {}
     this.homeHeightKey = 'es-hub:widget-height:' + draftScope;
+    this.mailKey = 'es-hub:mail-enabled:' + draftScope;
+    this.mailEnabled = false;
+    try { this.mailEnabled = this.quickDraftStorage?.getItem(this.mailKey) === 'true'; } catch (_) {}
+    this.mailSnapshot = null; this.mailBusy = false; this.mailError = ''; this.mailRevision = 0;
+    this.mailNextRefresh = Date.now(); this.mailProcesses = new Set(); this.mailOpenBusy = false;
     this.homeWidgetHeight = null;
     try {
       const height = JSON.parse(this.quickDraftStorage?.getItem(this.homeHeightKey) || 'null');
@@ -250,12 +256,16 @@ class AIMultipleKanbanExtras extends Plugin {
     void this.loadQuickDraft();
     this.restoreSlack();
     this.scheduleSlackRefresh();
+    this.scheduleMailRefresh();
     void this.loadYouTrackSnapshot();
     if (this.calendarEnabled) void this.refreshCalendar();
   }
 
   onunload() {
     this.active = false;
+    this.mailRevision++; this.mailSnapshot = null; clearTimeout(this.mailTimer);
+    for (const child of this.mailProcesses || []) child.kill('SIGKILL');
+    this.mailProcesses?.clear(); this.mailModal?.close();
     this.youtrackSetupRevision = (this.youtrackSetupRevision || 0) + 1;
     this.youtrackModal?.close();
     this.slackRevision++;
@@ -602,9 +612,35 @@ class AIMultipleKanbanExtras extends Plugin {
       const node = el('section', `aim-home-tile ${cls}`);
       node.setAttribute('aria-label', label); entry.homeGrid.append(node); return node;
     };
-    const calendar = tile('aim-home-calendar-tile', 'Calendar');
+    const calendar = tile('aim-home-calendar-tile', 'Calendar and Mail');
     entry.widgets.calendar = calendar;
-    const calendarHead = el('div', 'aim-home-tile-heading');
+    entry.homePanel = 'calendar';
+    entry.panelScroll = {};
+    const panelId = `aim-home-panel-${this.homePanelSequence = (this.homePanelSequence || 0) + 1}`;
+    const mainHead = el('div','aim-home-inbox-heading');
+    const mainTabs = el('div','aim-home-inbox-tabs');
+    mainTabs.setAttribute('role','tablist'); mainTabs.setAttribute('aria-label','Calendar and Mail');
+    for (const [id,label] of [['calendar','Calendar'],['mail','Mail']]) {
+      const control = button(label,() => this.setHomePanel(entry,id));
+      control.id = `${panelId}-${id}-tab`; control.setAttribute('role','tab');
+      control.setAttribute('aria-controls',`${panelId}-${id}`);
+      control.addEventListener('keydown',event => {
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault(); event.stopPropagation();
+        const next = event.key === 'Home' ? 'calendar' : event.key === 'End' ? 'mail' : id === 'calendar' ? 'mail' : 'calendar';
+        this.setHomePanel(entry,next); entry[`${next}MainTab`].focus();
+      });
+      entry[`${id}MainTab`] = control; mainTabs.append(control);
+      const panel = el('div',`aim-home-shared-panel aim-home-${id}-panel`);
+      panel.id = `${panelId}-${id}`; panel.setAttribute('role','tabpanel');
+      panel.setAttribute('aria-labelledby',control.id); panel.tabIndex = 0;
+      entry[`${id}Panel`] = panel;
+    }
+    entry.mailRefresh = button('Refresh',() => this.refreshMail(),'aim-home-text-button');
+    entry.mailRefresh.setAttribute('aria-label','Refresh Mail inbox'); entry.mailRefresh.hidden = true;
+    mainHead.append(mainTabs,entry.mailRefresh);
+    calendar.append(mainHead,entry.calendarPanel,entry.mailPanel);
+    const calendarHead = el('div', 'aim-home-calendar-toolbar');
     entry.monthLabel = el('h3');
     const monthActions = el('div', 'aim-home-month-actions');
     for (const [label, icon, action] of [
@@ -623,7 +659,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.calendarDays = el('div', 'aim-home-calendar');
     entry.calendarDays.setAttribute('role', 'group');
     entry.calendarDays.setAttribute('aria-label', 'Choose a date to see meetings');
-    entry.calendarMode = this.calendarEnabled ? 'agenda' : 'month';
+    entry.calendarMode = 'month';
     const tabs = el('div', 'aim-home-calendar-tabs');
     entry.monthTab = button('Month', () => { entry.calendarMode = 'month'; this.updateHome(entry); });
     entry.agendaTab = button('Agenda', () => { entry.calendarMode = 'agenda'; this.updateHome(entry); });
@@ -633,7 +669,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.calendarConnect = button('Connect Google Calendar', () => this.openCalendarSetup(), 'aim-home-text-button');
     entry.calendarRefresh = button('Refresh', () => this.refreshCalendar(true), 'aim-home-text-button');
     entry.calendarFooter.append(entry.calendarConnect, entry.calendarRefresh);
-    calendar.append(calendarHead, tabs, entry.calendarDays, entry.agenda, entry.calendarFooter);
+    entry.calendarPanel.append(calendarHead, tabs, entry.calendarDays, entry.agenda, entry.calendarFooter);
 
     entry.scratchBar = el('section','aim-home-scratch-bar');
     entry.scratchBar.setAttribute('aria-label','Scratchpad');
@@ -692,11 +728,55 @@ class AIMultipleKanbanExtras extends Plugin {
     const slackFooter = el('div', 'aim-home-tile-footer aim-home-slack-footer');
     slackFooter.append(entry.slackConnect, entry.slackStatus);
     slack.append(slackHead, entry.slackCount, slackFilters, entry.slackList, entry.slackMessage, slackFooter);
+    this.buildMailWidget(entry,el,button);
+    this.updateHomePanel(entry);
+  }
 
+  setHomePanel(entry,panel) {
+    if (!this.active || !['calendar','mail'].includes(panel) || entry.homePanel === panel) return;
+    entry.panelScroll ||= {};
+    entry.panelScroll[entry.homePanel] = (entry.homePanel === 'mail' ? [entry.mailList] : [entry.calendarDays,entry.agenda])
+      .filter(Boolean).map(node => [node,node.scrollTop]);
+    entry.calendarAnimation?.cancel(); entry.calendarAnimation = null;
+    entry.homePanel = panel;
+    this.updateHomePanel(entry);
+    if (panel === 'calendar') {
+      entry.agendaKey = null;
+      this.updateCalendarAgenda(entry);
+      this.updateCalendarMarkers(entry);
+    }
+    for (const [node,top] of entry.panelScroll[panel] || []) node.scrollTop = top;
+    if (panel === 'mail') this.autoRefreshMail();
+  }
+
+  updateHomePanel(entry) {
+    if (!entry.calendarPanel) return;
+    for (const id of ['calendar','mail']) {
+      const selected = entry.homePanel === id;
+      entry[`${id}Panel`].hidden = !selected;
+      entry[`${id}MainTab`].setAttribute('aria-selected',String(selected));
+      entry[`${id}MainTab`].tabIndex = selected ? 0 : -1;
+    }
+    entry.mailRefresh.hidden = entry.homePanel !== 'mail';
+  }
+
+  homePanelVisible(entry,panel) {
+    const node = entry[`${panel}Panel`];
+    return !this.homeCollapsed && this.homeModules.includes('calendar') && (entry.homePanel || 'calendar') === panel &&
+      entry.home?.isConnected && entry.home.ownerDocument?.visibilityState !== 'hidden' &&
+      (!node || (node.isConnected && !node.hidden)) && (!entry.home.getClientRects || entry.home.getClientRects().length > 0);
   }
 
   updateHome(entry) {
     if (!entry.home || !this.active) return;
+    const layoutKey = JSON.stringify([this.homeCollapsed,this.homeModules]);
+    const layoutChanged = entry.homeLayoutKey !== layoutKey;
+    entry.moduleScroll ||= new Map();
+    if (layoutChanged) for (const [id,widget] of Object.entries(entry.widgets || {})) {
+      if (widget.isConnected && widget.getClientRects().length) entry.moduleScroll.set(id,
+        [...widget.querySelectorAll('.aim-home-youtrack-list,.aim-home-slack-list,.aim-home-mail-list,.aim-home-agenda')].map(node => [node,node.scrollTop]));
+    }
+    entry.homeLayoutKey = layoutKey;
     const today = homeDay(new Date());
     if (!entry.selectedDay || entry.selectedDay === entry.today) {
       entry.selectedDay = today;
@@ -708,6 +788,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.homeToggle.setAttribute('aria-expanded', String(!this.homeCollapsed));
     entry.homeToggle.disabled = !!this.homeSaving;
     entry.homeGrid.hidden = this.homeCollapsed;
+    this.updateHomePanel(entry);
 
     entry.homeGrid.style.setProperty('--aim-home-columns', Math.max(1,this.homeModules.length));
     for (const [id,toggle] of Object.entries(entry.moduleToggles)) {
@@ -757,6 +838,11 @@ class AIMultipleKanbanExtras extends Plugin {
     this.updateCalendarMarkers(entry);
     this.updateYouTrackWidget(entry);
     this.updateSlackWidget(entry);
+    this.updateMailWidget(entry);
+    if (layoutChanged && !this.homeCollapsed) for (const id of this.homeModules) {
+      for (const [node,top] of entry.moduleScroll.get(id) || []) node.scrollTop = top;
+      entry.moduleScroll.delete(id);
+    }
     this.updateQuickDraft(entry);
   }
 
@@ -817,7 +903,7 @@ class AIMultipleKanbanExtras extends Plugin {
       this.refreshHomes(); this.scheduleHomeRefresh();
       void this.loadYouTrackSnapshot();
       if (this.calendarEnabled && !this.homeCollapsed && this.homeModules.includes('calendar') &&
-          [...this.toolbars.values()].some(entry => entry.home?.isConnected) && Date.now() - (this.calendarLastAttempt || 0) >= 300000) void this.refreshCalendar();
+          [...this.toolbars.values()].some(entry => this.homePanelVisible(entry,'calendar')) && Date.now() - (this.calendarLastAttempt || 0) >= 300000) void this.refreshCalendar();
     }, 60000);
     this.homeTimer?.unref?.();
   }
@@ -890,17 +976,36 @@ class AIMultipleKanbanExtras extends Plugin {
     finally { this.dailyJobs.delete(day); this.refreshHomes(); }
   }
 
-  async setHomeModule(id, enabled) {
-    if (!Object.hasOwn(HOME_MODULES,id)) throw new Error('Choose a valid module.');
+  async changeHomeModules(transform) {
+    if (!this.active || this.homeSaving) throw Error('Wait for the current widget change.');
+    const expected = JSON.stringify(this.homeModules);
     this.homeSaving = true; this.refreshHomes();
     const job = this.tagSuggestionSave.then(async () => {
+      if (!this.active) throw Error('The dashboard was closed.');
       const settings = await this.loadData() || {};
-      const modules = homeModuleSelection(settings);
-      const next = Object.keys(HOME_MODULES).filter(key => key === id ? enabled : modules.includes(key));
-      await this.saveData({...settings,homeModules:next,slackModuleKnown:true}); this.homeModules = next;
+      const current = homeModuleSelection(settings);
+      if (JSON.stringify(current) !== expected) throw Error('The widget layout changed. Reopen the dashboard and try again.');
+      const next = transform([...current],settings);
+      if (next.length > 3 || new Set(next).size !== next.length || next.some(id => !Object.hasOwn(HOME_MODULES,id))) throw Error('Choose up to three different widgets.');
+      await this.saveData({...settings,homeModules:next,homeLayoutVersion:2,slackModuleKnown:true});
+      if (this.active) this.homeModules = next;
     });
     this.tagSuggestionSave = job.catch(() => {});
-    try { await job; } finally { this.homeSaving = false; this.refreshHomes(); }
+    try { await job; } finally {
+      this.homeSaving = false; this.refreshHomes();
+      this.autoRefreshMail(); this.autoRefreshSlack();
+    }
+  }
+
+  async setHomeModule(id, enabled) {
+    if (!Object.hasOwn(HOME_MODULES,id)) throw Error('Choose a valid module.');
+    return this.changeHomeModules((modules,settings) => {
+      if (!enabled) return modules.filter(key => key !== id);
+      if (modules.includes(id)) return modules;
+      if (modules.length >= 3) throw Error('Three widgets are already open. Choose one to replace.');
+      const next = [...modules,id];
+      return Object.keys(HOME_MODULES).filter(key => next.includes(key));
+    });
   }
 
   rememberQuickDraft() {
@@ -1039,7 +1144,7 @@ class AIMultipleKanbanExtras extends Plugin {
       const monthKey = entry.selectedDay.slice(0, 7);
       if (!this.calendarCache.months.has(monthKey)) {
         if (this.calendarCache.kind === 'google') {
-          if (!this.calendarBusy && !this.googleMonthFailures.has(monthKey)) void this.refreshCalendar(false, monthKey);
+          if (!this.calendarBusy && !this.googleMonthFailures.has(monthKey) && this.homePanelVisible(entry,'calendar')) void this.refreshCalendar(false, monthKey);
           entry.agenda.append(homeElement(doc, 'p', 'aim-home-empty', this.googleMonthFailures.has(monthKey) ? 'Could not load this month. Use Refresh to retry.' : 'Loading this month…'));
           return;
         }
@@ -1071,6 +1176,177 @@ class AIMultipleKanbanExtras extends Plugin {
     } catch (error) { entry.agenda.append(homeElement(doc, 'p', 'aim-home-feed-message', error.message)); }
   }
 
+
+  mailSupported() {
+    try { return require('node:os').platform() === 'darwin'; } catch (_) { return false; }
+  }
+
+  buildMailWidget(entry,el,button) {
+    const widget = entry.mailPanel;
+    const filters = el('div','aim-home-mail-filters'); filters.setAttribute('aria-label','Filter Mail inbox');
+    entry.mailFilter = 'all'; entry.mailAccount = ''; entry.mailFilters = new Map();
+    for (const [id,label] of [['all','All'],['unread','Unread']]) {
+      const control = button(label,() => { entry.mailFilter = id; this.updateMailWidget(entry); },'aim-home-text-button');
+      control.setAttribute('aria-pressed',String(id === 'all')); entry.mailFilters.set(id,control); filters.append(control);
+    }
+    entry.mailAccountSelect = el('select','aim-home-mail-account'); entry.mailAccountSelect.setAttribute('aria-label','Mail account');
+    entry.mailAccountSelect.addEventListener('change',() => { entry.mailAccount = entry.mailAccountSelect.value; this.updateMailWidget(entry); });
+    filters.append(entry.mailAccountSelect);
+    entry.mailList = el('div','aim-home-mail-list');
+    entry.mailMessage = el('p','aim-home-mail-message'); entry.mailMessage.setAttribute('role','status');
+    entry.mailConnect = button('Connect Mail',() => this.mailEnabled ? this.openMailSettings() : this.refreshMail(true),'aim-home-text-button');
+    entry.mailStatus = el('span','aim-home-caption');
+    const footer = el('div','aim-home-tile-footer'); footer.append(entry.mailConnect,entry.mailStatus);
+    widget.append(filters,entry.mailList,entry.mailMessage,footer);
+  }
+
+  updateMailWidget(entry) {
+    if (!entry.mailList) return;
+    const doc = entry.scope.ownerDocument, snapshot = this.mailSnapshot, supported = this.mailSupported();
+    homeText(entry.mailRefresh,this.mailBusy ? 'Refreshing…' : 'Refresh');
+    entry.mailRefresh.disabled = this.mailBusy || !this.mailEnabled || !supported;
+    entry.mailConnect.disabled = !supported || (this.mailBusy && !this.mailEnabled);
+    homeText(entry.mailConnect,this.mailEnabled ? 'Mail settings' : this.mailBusy ? 'Connecting…' : 'Connect Mail');
+    for (const [id,control] of entry.mailFilters) control.setAttribute('aria-pressed',String(id === entry.mailFilter));
+    const accountKey = JSON.stringify(snapshot?.accounts || []);
+    if (entry.mailAccountKey !== accountKey) {
+      entry.mailAccountKey = accountKey; entry.mailAccountSelect.replaceChildren();
+      const all = homeElement(doc,'option','','All accounts'); all.value = ''; entry.mailAccountSelect.append(all);
+      for (const account of snapshot?.accounts || []) { const option = homeElement(doc,'option','',account.name); option.value = account.id; entry.mailAccountSelect.append(option); }
+      if (!snapshot?.accounts.some(a => a.id === entry.mailAccount)) entry.mailAccount = '';
+      entry.mailAccountSelect.value = entry.mailAccount;
+    }
+    entry.mailAccountSelect.disabled = !snapshot;
+    entry.mailList.setAttribute('aria-busy',String(this.mailBusy));
+    homeText(entry.mailStatus,snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : '');
+    entry.mailStatus.title = snapshot ? `${snapshot.accounts.length} accounts · Last read ${(snapshot.durationMs / 1000).toFixed(1)}s. Mail stays in memory on this Mac.` : '';
+    homeText(entry.mailMessage,this.mailError + (this.mailError && snapshot ? ' Showing the last successful results.' : ''));
+    entry.mailMessage.hidden = !this.mailError;
+    const key = JSON.stringify([snapshot?.fetchedAt,this.mailEnabled,!snapshot && this.mailBusy,supported,entry.mailFilter,entry.mailAccount]);
+    if (entry.mailRenderKey === key) return;
+    const oldScroll = entry.mailList.scrollTop, sameFilter = entry.mailLastFilter === entry.mailFilter && entry.mailLastAccount === entry.mailAccount;
+    entry.mailRenderKey = key; entry.mailLastFilter = entry.mailFilter; entry.mailLastAccount = entry.mailAccount; entry.mailList.replaceChildren();
+    if (!snapshot) {
+      entry.mailList.append(homeElement(doc,'p','aim-home-empty',!supported ? 'Apple Mail is available on macOS. Choose another widget on this device.' : this.mailBusy
+        ? 'Reading your inboxes… The first read may take about 30 seconds. Allow Mail access if macOS asks.'
+        : this.mailEnabled ? 'Your inboxes will load while this widget is visible.' : 'Bring the inboxes already configured in Apple Mail together. Connect once on this Mac; macOS may ask for Automation access.'));
+      return;
+    }
+    const accounts = new Map(snapshot.accounts.map(a => [a.id,a.name]));
+    const rows = snapshot.rows.filter(row => (!entry.mailAccount || row.accountId === entry.mailAccount) && (entry.mailFilter !== 'unread' || !row.read)).slice(0,50);
+    if (!rows.length) entry.mailList.append(homeElement(doc,'p','aim-home-empty',snapshot.accounts.length ? 'No messages in this view among the loaded results.' : 'No enabled accounts were found in Apple Mail.'));
+    for (const item of rows) {
+      const row = homeElement(doc,'button','aim-home-mail-row' + (item.read ? '' : ' is-unread')); row.type = 'button';
+      row.title = 'Open in Apple Mail';
+      const meta = homeElement(doc,'span','aim-home-mail-meta');
+      meta.append(homeElement(doc,'span','aim-home-mail-sender',item.sender || '(Unknown sender)'));
+      const time = homeElement(doc,'time','aim-home-mail-time',new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.receivedAt)));
+      time.dateTime = new Date(item.receivedAt).toISOString(); meta.append(time);
+      row.append(meta,homeElement(doc,'span','aim-home-mail-subject',item.subject || '(No subject)'),homeElement(doc,'span','aim-home-mail-account-label',accounts.get(item.accountId)));
+      row.setAttribute('aria-label',`${item.read ? '' : 'Unread. '}${item.sender}. ${item.subject || 'No subject'}. ${accounts.get(item.accountId)}. Open in Apple Mail`);
+      row.addEventListener('click',() => { void this.openMailMessage(item); }); entry.mailList.append(row);
+    }
+    entry.mailList.scrollTop = sameFilter ? oldScroll : 0;
+  }
+
+  async refreshMail(connect = false) {
+    if (!this.active || this.mailBusy || (!connect && !this.mailEnabled)) return;
+    if (!this.mailSupported()) { this.mailError = 'Apple Mail is available on macOS only.'; this.refreshHomes(); return; }
+    this.mailBusy = true; this.mailError = ''; clearTimeout(this.mailTimer);
+    const revision = ++this.mailRevision, started = Date.now();
+    const current = () => this.active && this.mailRevision === revision;
+    this.refreshHomes();
+    try {
+      const snapshot = parseMailSnapshot(await this.fetchMailSnapshot());
+      if (!current()) return;
+      if (connect) {
+        try {
+          if (!this.quickDraftStorage) throw Error();
+          this.quickDraftStorage.setItem(this.mailKey,'true');
+        } catch (_) { throw mailFailure('storage'); }
+        this.mailEnabled = true;
+      }
+      snapshot.durationMs = Date.now() - started; this.mailSnapshot = snapshot; this.mailPermissionError = false;
+    } catch (error) {
+      if (current()) { this.mailError = error?.mailSafe ? error.message : mailFailure('read').message; this.mailPermissionError = error?.mailCode === -1743; }
+    } finally {
+      if (current()) { this.mailBusy = false; this.mailNextRefresh = Date.now() + 300000; this.refreshHomes(); this.scheduleMailRefresh(); }
+    }
+  }
+
+  autoRefreshMail() {
+    if (!this.active || !this.mailEnabled || this.mailBusy || this.mailOpenBusy || this.mailModal || this.mailPermissionError || this.homeCollapsed ||
+        !this.homeModules.includes('calendar') || Date.now() < this.mailNextRefresh) return false;
+    if (![...this.toolbars.values()].some(entry => this.homePanelVisible(entry,'mail'))) return false;
+    void this.refreshMail(); return true;
+  }
+
+  scheduleMailRefresh(waitWhenHidden = false) {
+    clearTimeout(this.mailTimer); this.mailTimer = null;
+    if (!this.active || !this.mailEnabled || this.mailBusy || this.mailPermissionError) return;
+    this.mailTimer = setTimeout(() => {
+      this.mailTimer = null; if (!this.autoRefreshMail()) this.scheduleMailRefresh(true);
+    },waitWhenHidden ? 60000 : Math.max(1000,this.mailNextRefresh - Date.now()));
+    this.mailTimer?.unref?.();
+  }
+
+  async disconnectMail() {
+    try { this.quickDraftStorage?.removeItem(this.mailKey); } catch (_) { throw mailFailure('storage'); }
+    this.mailRevision++; this.mailEnabled = false; this.mailBusy = false; this.mailOpenBusy = false;
+    this.mailSnapshot = null; this.mailError = ''; this.mailPermissionError = false;
+    clearTimeout(this.mailTimer); for (const child of this.mailProcesses || []) child.kill('SIGKILL');
+    this.mailProcesses?.clear(); this.refreshHomes();
+  }
+
+  openMailSettings() {
+    if (this.mailModal) return;
+    const modal = this.mailModal = new Modal(this.app), doc = this.app.workspace.containerEl.ownerDocument;
+    modal.onOpen = () => {
+      const content = modal.contentEl; content.empty();
+      content.append(homeElement(doc,'h2','','Apple Mail'));
+      content.append(homeElement(doc,'p','','Up to 50 messages from each enabled account’s inbox, sorted by received date. Each view shows at most 50 loaded messages. Unread filters this sample; it is not a total unread count. Archives and other folders are not included.'));
+      content.append(homeElement(doc,'p','','Messages stay in memory on this Mac. Automatic refresh runs about every five minutes while Mail is visible. Opening a message in Apple Mail may mark it read.'));
+      content.append(homeElement(doc,'p','','Disconnect stops reads and clears this list. To remove macOS permission, use System Settings → Privacy & Security → Automation. Connect separately on each Mac.'));
+      const disconnect = homeElement(doc,'button','','Disconnect Mail'); disconnect.type = 'button';
+      disconnect.addEventListener('click',() => { void this.runAction(async () => { await this.disconnectMail(); modal.close(); }); }); content.append(disconnect);
+    };
+    modal.onClose = () => { if (this.mailModal === modal) this.mailModal = null; };
+    modal.open();
+  }
+
+  fetchMailSnapshot() { return this.runMailBridge(['list']); }
+
+  async openMailMessage(item) {
+    if (!this.active || this.mailOpenBusy || !this.mailEnabled || !this.mailSnapshot?.rows.includes(item)) return;
+    this.mailOpenBusy = true; const revision = this.mailRevision;
+    try { await this.runMailBridge(['open',item.accountId,item.mailbox,String(item.id),item.messageId]); }
+    catch (error) { if (this.active && revision === this.mailRevision) { this.mailError = error?.mailSafe ? error.message : 'Could not open this message. Refresh Mail and try again.'; this.refreshHomes(); } }
+    finally { this.mailOpenBusy = false; }
+  }
+
+  runMailBridge(args) {
+    return new Promise((resolve,reject) => {
+      if (!this.mailSupported() || !((args.length === 1 && args[0] === 'list') || (args.length === 5 && args[0] === 'open' && args.slice(1).every(v => typeof v === 'string' && v.length <= 2048)))) { reject(mailFailure('runtime')); return; }
+      let execFile,script;
+      try {
+        ({execFile} = require('child_process'));
+        const dir = this.manifest?.dir || `${this.app.vault.configDir || '.obsidian'}/plugins/aimultiple-kanban-extras`;
+        script = this.app.vault.adapter.getFullPath(`${dir}/scripts/read-mail.applescript`);
+        if (!require('path').isAbsolute(script) || !require('fs').existsSync(script)) throw Error();
+      } catch (_) { reject(mailFailure('runtime')); return; }
+      const child = execFile('/usr/bin/osascript',['-l','AppleScript',script,...args],{
+        timeout:args[0] === 'list' ? 90000 : 20000,maxBuffer:4*1024*1024,killSignal:'SIGKILL',encoding:'utf8',
+      },(error,stdout,stderr) => {
+        this.mailProcesses.delete(child);
+        let data; try { data = JSON.parse(stdout); } catch (_) {}
+        if (error) { reject(mailFailure(error.killed ? -1712 : /\(-1743\)/.test(stderr || '') ? -1743 : 'read')); return; }
+        if (!data || data.ok === false) { reject(mailFailure(data?.code)); return; }
+        if (args[0] === 'open' && data.ok !== true) { reject(mailFailure('read')); return; }
+        resolve(data);
+      });
+      this.mailProcesses.add(child);
+    });
+  }
 
   restoreSlack() {
     try {
@@ -3989,15 +4265,55 @@ function validHomeWidgets(value) {
     ? [...value] : ['calendar', 'recent', 'youtrack'];
 }
 
+function mailFailure(code) {
+  const messages = {
+    '-1743':'Mail access was not allowed. Enable Obsidian → Mail in System Settings → Privacy & Security → Automation, then retry.',
+    '-1712':'Mail took too long to respond. Open Mail, let it finish syncing, then retry.',
+    '-1728':'The message or mailbox is no longer available. Refresh Mail and try again.',
+    '-2701':'More than 20 enabled Mail accounts were found. This widget supports up to 20.',
+    '-2702':'An account’s inbox could not be identified. Check its inbox in Apple Mail, then retry.',
+    '-2703':'An inbox changed during the read. The previous list was kept; try Refresh again.',
+    storage:'Could not save the Mail preference on this Mac. Try again.',
+    runtime:'The local Mail reader is unavailable. This feature needs macOS and the complete plugin folder.',
+  };
+  const error = Error(messages[code] || 'Could not read a valid Mail snapshot. Open Mail and try Refresh again.');
+  error.mailSafe = true; error.mailCode = code; return error;
+}
+
+function parseMailSnapshot(value) {
+  if (value?.schema !== 1 || !Array.isArray(value.accounts) || value.accounts.length > 20 || !Array.isArray(value.rows) || value.rows.length > 1000) throw mailFailure('read');
+  const text = (v,max) => typeof v === 'string' && v.length <= max && !/[\u0000]/.test(v);
+  const accounts = new Map();
+  for (const a of value.accounts) {
+    if (!text(a.id,512) || !a.id || !text(a.name,256) || typeof a.limited !== 'boolean' || accounts.has(a.id)) throw mailFailure('read');
+    accounts.set(a.id,{id:a.id,name:a.name,limited:a.limited});
+  }
+  const seen = new Set(), counts = new Map();
+  const rows = value.rows.map(row => {
+    if (!Number.isSafeInteger(row.id) || row.id < 1 || !accounts.has(row.accountId) || !text(row.mailbox,512) || !row.mailbox ||
+        !text(row.subject,1024) || !text(row.sender,512) || !text(row.messageId,2048) || !Number.isFinite(row.receivedAt) ||
+        row.receivedAt < 0 || row.receivedAt > Date.now() + 86400000 || typeof row.read !== 'boolean') throw mailFailure('read');
+    const key = row.accountId + '\n' + row.id;
+    if (seen.has(key)) throw mailFailure('read'); seen.add(key);
+    counts.set(row.accountId,(counts.get(row.accountId) || 0) + 1);
+    if (counts.get(row.accountId) > 50) throw mailFailure('read');
+    return {id:row.id,accountId:row.accountId,mailbox:row.mailbox,messageId:row.messageId,subject:row.subject,sender:row.sender,receivedAt:row.receivedAt,read:row.read};
+  }).sort((a,b) => b.receivedAt - a.receivedAt || b.id - a.id);
+  return {accounts:[...accounts.values()],rows,fetchedAt:new Date().toISOString()};
+}
+
 function homeModuleSelection(settings) {
-  const modules = validHomeModules(settings?.homeModules);
-  if (settings?.slackModuleKnown !== true && !modules.includes('slack')) modules.push('slack');
-  return modules;
+  let modules = validHomeModules(settings?.homeModules);
+  // Three occupied legacy slots meant a module was parked by Mail; restore the three basic tiles.
+  if (settings?.homeLayoutVersion === 1 && modules.length === 3 && modules.includes('mail')) modules = [...DEFAULT_HOME_MODULES];
+  else modules = [...new Set(modules.map(id => id === 'mail' ? 'calendar' : id))];
+  if (![1,2].includes(settings?.homeLayoutVersion) && settings?.slackModuleKnown !== true && !modules.includes('slack')) modules.push('slack');
+  return DEFAULT_HOME_MODULES.filter(id => modules.includes(id));
 }
 
 function validHomeModules(value) {
-  return Array.isArray(value) && new Set(value).size === value.length && value.every(id => id === 'scratchpad' || Object.hasOwn(HOME_MODULES,id))
-    ? value.filter(id => id !== 'scratchpad') : Object.keys(HOME_MODULES);
+  return Array.isArray(value) && new Set(value).size === value.length && value.every(id => ['scratchpad','mail',...DEFAULT_HOME_MODULES].includes(id))
+    ? value.filter(id => id !== 'scratchpad').slice(0,3) : [...DEFAULT_HOME_MODULES];
 }
 
 function quickNotePath(value) {

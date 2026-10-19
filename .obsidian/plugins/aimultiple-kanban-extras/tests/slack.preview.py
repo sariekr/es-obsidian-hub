@@ -36,6 +36,8 @@ checks=r'''
  const verify=(test,label)=>{if(!test)throw Error(label);};
  const settle=async()=>{for(let n=0;n<8;n++)await new Promise(r=>setTimeout(r,0));};
  try {
+  // Reset only this synthetic page's Mail preference between theme variants.
+  localStorage.removeItem('es-hub:mail-enabled:vault');
   await bootFixture(ARGS);const f=window.fixture,p=f.plugin;
   const token='xoxp-fixture-only-not-a-real-token';
   const response=data=>({status:200,headers:{},text:JSON.stringify(data)});
@@ -129,14 +131,68 @@ checks=r'''
   verify(document.querySelector('.aim-home-scratch-input').value==='Recovered draft','draft recovery after reload');
   verify(f.plugin.quickDraft.lastSaved===savedPath,'latest saved note survives reload');
   f.plugin.editQuickDraft('');await f.plugin.setHomeCollapsed(false);await f.plugin.refreshSlack();await settle();
+  // Actual Calendar/Mail tabs, using only synthetic message metadata.
+  const w=f.plugin;w.mailSupported=()=>true;
+  const mailData={schema:1,accounts:Array.from({length:7},(_,i)=>({id:'account-'+i,name:['Work','Personal','University','Research','Projects','Alumni','Family'][i],limited:true})),
+    rows:Array.from({length:84},(_,i)=>({id:i+1,accountId:'account-'+(i%7),mailbox:'INBOX',messageId:'demo-'+i+'@example.test',
+      subject:i===0?'<script>Literal subject</script>':['Review notes for tomorrow’s meeting','Your weekly reading list is ready','Updated schedule for the autumn semester'][i%3],
+      sender:['Demo colleague','Reading list','University office'][i%3],receivedAt:Date.now()-i*1800000,read:i%3!==0}))};
+  let mailReads=0,mailOpens=0;w.fetchMailSnapshot=async()=>{mailReads++;return structuredClone(mailData);};
+  w.runMailBridge=async args=>{verify(args[0]==='open','only explicit opens');mailOpens++;return {ok:true};};
+  w.refreshHomes();
+  const home=[...w.toolbars.values()].find(e=>e.home?.isConnected);
+  verify(!document.querySelector('.aim-home-module-shelf,.aim-home-module-handle'),'shelf and swap handles removed');
+  home.calendarMainTab.click();
+  const selectedDay=home.selectedDay,month=home.calendarMonth,mode=home.calendarMode;
+  const originalHeight=home.widgets.calendar.getBoundingClientRect().height;
+  home.mailMainTab.click();await settle();
+  verify(home.calendarPanel.hidden&&!home.mailPanel.hidden,'Mail replaces Calendar content in the shared tile');
+  verify(home.mailMainTab.getAttribute('aria-selected')==='true'&&home.calendarMainTab.tabIndex===-1,'tab selection and keyboard stop');
+  verify(document.querySelectorAll('.aim-home-grid > .aim-home-tile').length===3,'tabs keep three tiles');
+  verify(mailReads===0,'no reads before Connect');
+  home.mailConnect.click();await settle();
+  verify(w.mailEnabled&&mailReads===1&&home.mailList.querySelectorAll('button').length===50,'connect reads and renders bounded list');
+  verify(!home.mailList.querySelector('script')&&home.mailList.textContent.includes('<script>Literal subject</script>'),'Mail subjects rendered as text');
+  home.mailFilters.get('unread').click();verify(home.mailList.querySelectorAll('button').length===28,'Unread filters loaded rows');
+  home.mailAccountSelect.value='account-2';home.mailAccountSelect.dispatchEvent(new Event('change'));
+  verify(home.mailList.querySelectorAll('button').length===4,'account and unread filters combine');
+  home.mailList.querySelector('button').click();await settle();verify(mailOpens===1,'explicit row opens exact message');
+  home.mailFilters.get('all').click();home.mailAccountSelect.value='';home.mailAccountSelect.dispatchEvent(new Event('change'));
+  const good=w.mailSnapshot;w.fetchMailSnapshot=async()=>{throw Error('private raw failure');};
+  home.mailRefresh.click();await settle();verify(w.mailSnapshot===good&&!home.mailMessage.hidden&&!home.mailMessage.textContent.includes('private raw'),'failed refresh keeps list and safe error');
+  w.fetchMailSnapshot=async()=>structuredClone(mailData);await w.refreshMail();await settle();
+  home.mailList.scrollTop=80;const savedScroll=home.mailList.scrollTop;
+  home.mailFilters.get('unread').click();const selectedFilter=home.mailFilter;
+  home.calendarMainTab.click();await settle();
+  verify(!home.calendarPanel.hidden&&home.mailPanel.hidden&&home.mailRefresh.hidden,'Calendar restores its own content and controls');
+  verify(home.selectedDay===selectedDay&&home.calendarMonth===month&&home.calendarMode===mode,'Calendar view survives Mail');
+  home.calendarMainTab.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
+  verify(home.homePanel==='mail'&&document.activeElement===home.mailMainTab,'arrow key switches and focuses Mail');
+  verify(home.mailFilter===selectedFilter,'Mail filter survives Calendar');
+  home.mailFilters.get('all').click();home.mailList.scrollTop=savedScroll;
+  home.calendarMainTab.click();home.mailMainTab.click();await settle();
+  verify(home.mailList.scrollTop===savedScroll,'Mail scroll survives tab switch');
+  verify(home.widgets.calendar.getBoundingClientRect().height===originalHeight,'shared tile height stays fixed');
+  home.mailMainTab.dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true}));
+  verify(home.homePanel==='calendar'&&document.activeElement===home.calendarMainTab,'Home selects Calendar');
+  const unchanged=[...w.homeModules];f.failSettings=true;
+  await w.setHomeModule('calendar',false).catch(()=>{});await settle();
+  verify(w.homeModules.join(',')===unchanged.join(','),'failed visibility save preserves layout');f.failSettings=false;
+  verify(!JSON.stringify(f.saved).includes('example.test')&&!JSON.stringify(f.saved).includes('Literal subject'),'Mail data is never persisted in plugin settings');
+  const savedLayout=w.homeModules.join(',');await f.reload();await settle();
+  verify(f.plugin.homeModules.join(',')===savedLayout,'layout survives reload');
+  const r=f.plugin;r.mailSupported=()=>true;r.fetchMailSnapshot=async()=>structuredClone(mailData);
+  await r.refreshMail();await settle();
+  await r.setHomeCollapsed(true);await settle();verify(document.querySelector('.aim-home-grid').hidden,'Hide widgets hides grouped tile');
+  await r.setHomeCollapsed(false);await settle();
   const grid=document.querySelector('.aim-home-grid'),tiles=[...document.querySelectorAll('.aim-home-tile')];
   verify(new Set(tiles.map(x=>Math.round(x.getBoundingClientRect().height))).size===1,'equal widget heights');
   if(query.has('narrow')||query.has('compact'))verify(grid.scrollWidth>grid.clientWidth,'narrow row scrolls horizontally');
   verify(document.documentElement.scrollWidth<=innerWidth,'no viewport overflow');
-  status.textContent='PASS · Scratchpad bar, three widgets and Slack · Synthetic data';document.title='PASS · Slack Home fixture';
+  status.textContent='PASS · Calendar/Mail tabs, Scratchpad and Slack · Synthetic data';document.title='PASS · Slack Home fixture';
  } catch(error){status.textContent='FAIL · '+error.message;document.title='FAIL · Slack Home fixture';}
 })();
 '''.replace('ARGS',json.dumps(args).replace('</','<\\/'))
-html='<!doctype html><html lang="en"><meta charset="utf-8"><title>Slack Home fixture</title><style>'+''.join(styles)+'</style><body><div class="fixture-bar"><strong id="qa-status">Running synthetic checks…</strong><a href="?">Desktop</a><a href="?narrow=1">Narrow panel</a><a href="?light=1">Light</a></div><script>'+(ROOT/'tests/toolbar.fixture.js').read_text()+'</script><script>'+checks+'</script></body></html>'
+html='<!doctype html><html lang="en"><meta charset="utf-8"><title>Slack Home fixture</title><style>'+''.join(styles)+'</style><body><div class="fixture-bar"><strong id="qa-status">Running synthetic checks…</strong><a href="?">Desktop</a><a href="?narrow=1">Narrow panel</a><a href="?light=1">Light</a></div><script>'+(ROOT/'tests/toolbar.fixture.js').read_text()+'</script><script>'+checks.replace('</', '<\\/')+'</script></body></html>'
 (OUT/'index.html').write_text(html)
 print((OUT/'index.html').as_uri())
