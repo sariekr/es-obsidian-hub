@@ -200,6 +200,7 @@ class AIMultipleKanbanExtras extends Plugin {
     this.tagSuggestionSave = Promise.resolve();
     this.captureBusy = false;
     this.toolbars = new Map();
+    this.boardExcerptCache = new WeakMap();
     this.noteToolbars = new Map();
     this.documents = new Map();
     this.completionJobs = new Map();
@@ -226,18 +227,22 @@ class AIMultipleKanbanExtras extends Plugin {
       this.queueCompletion(file, cache, false);
       this.updateWip();
       this.refreshNoteToolbars(file);
+      this.invalidateBoardNote(file);
       this.refreshHomes();
     }));
     this.registerEvent(this.app.vault.on("delete", (file) => {
+      this.invalidateBoardNote(file);
       this.updateWip();
       this.refreshNoteToolbars(file.children !== undefined ? undefined : file);
       this.refreshHomes();
     }));
     this.registerEvent(this.app.vault.on("create", (file) => {
+      this.refreshBoardTools();
       if (file.children !== undefined) this.refreshNoteToolbars();
       this.refreshHomes();
     }));
-    this.registerEvent(this.app.vault.on("rename", () => { this.syncNoteToolbars(); this.refreshNoteToolbars(); this.refreshHomes(); }));
+    this.registerEvent(this.app.vault.on("modify", file => this.invalidateBoardNote(file)));
+    this.registerEvent(this.app.vault.on("rename", (file) => { this.invalidateBoardNote(file); this.syncNoteToolbars(); this.refreshNoteToolbars(); this.refreshHomes(); }));
     this.app.workspace.onLayoutReady(() => {
       if (!this.active) return;
       this.app.workspace.iterateAllLeaves((leaf) => this.attachDocument(leaf.view.containerEl.ownerDocument));
@@ -369,6 +374,7 @@ class AIMultipleKanbanExtras extends Plugin {
     const entry = this.toolbars.get(leaf);
     if (!entry) return;
     entry.observer.disconnect();
+    this.clearBoardTools(entry);
     entry.calendarAnimation?.cancel();
     entry.resizeCancel?.();
     entry.homeResizeObserver?.disconnect();
@@ -382,6 +388,7 @@ class AIMultipleKanbanExtras extends Plugin {
     if (!this.active) return;
     const host = entry.scope.querySelector(".obk-view-container");
     if (!host) {
+      this.clearBoardTools(entry);
       entry.calendarAnimation?.cancel();
       entry.resizeCancel?.();
       entry.homeResizeObserver?.disconnect();
@@ -392,7 +399,7 @@ class AIMultipleKanbanExtras extends Plugin {
       entry.host = null;
       return;
     }
-    if (entry.host !== host) entry.host?.classList.remove("aim-home-host");
+    if (entry.host !== host) { this.clearBoardTools(entry); entry.host?.classList.remove("aim-home-host"); }
     entry.host = host;
     host.classList.add("aim-home-host");
     if (!entry.toolbar) this.buildToolbar(entry);
@@ -402,6 +409,7 @@ class AIMultipleKanbanExtras extends Plugin {
     } else entry.toolbar.remove();
     if (!entry.home) this.buildHome(entry);
     if (host.firstElementChild !== entry.home) host.prepend(entry.home);
+    this.mountBoardTools(entry);
     if (entry.resizeHost !== host) {
       entry.resizeCancel?.();
       entry.homeResizeObserver?.disconnect();
@@ -412,6 +420,7 @@ class AIMultipleKanbanExtras extends Plugin {
         entry.homeResizeObserver.observe(host);
         entry.homeResizeObserver.observe(entry.homeHeading);
         entry.homeResizeObserver.observe(entry.config);
+        if (entry.boardTools) entry.homeResizeObserver.observe(entry.boardTools);
       }
     }
     this.updateHome(entry);
@@ -449,6 +458,232 @@ class AIMultipleKanbanExtras extends Plugin {
     for (const button of entry.buttons) button.disabled = this.captureBusy;
   }
 
+  // Display-only enhancements on the managed Base; preserve its query and card order.
+  boardNextStep(text) {
+    let section = false, depth = 0, fence = '';
+    for (const line of boardBody(text).slice(0, 128000).replace(/<!--[\s\S]*?-->/g,'').split(/\r?\n/)) {
+      const marker = line.trim().match(/^(\x60{3,}|~{3,})/);
+      if (marker) { if (!fence) fence = marker[1][0]; else if (fence === marker[1][0]) fence = ''; continue; }
+      if (fence) continue;
+      const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+      if (heading) {
+        if (section && heading[1].length <= depth) break;
+        if (/^(sonraki ad[ıi]m|next step)$/i.test(boardPlainText(heading[2]))) { section = true; depth = heading[1].length; }
+        continue;
+      }
+      if (!section || /^\s*(?:<!--|!?\[\^)/.test(line)) continue;
+      const value = boardPlainText(line.replace(/^\s*(?:[-*+]|\d+[.)])\s*(?:\[[ xX]\]\s*)?/, ''));
+      if (value && !/^[-–—.…\s]+$/.test(value)) return value.length > 180 ? value.slice(0,179) + '…' : value;
+    }
+    return '';
+  }
+
+  boardCardModel(file, title) {
+    const fm = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
+    const stored = this.categoryValue(fm.category);
+    const type = this.categoryValues().includes(stored) ? stored : this.inferCategoryFromFolder(file.parent?.path || '') || '';
+    const priority = typeof fm.priority === 'string' ? fm.priority : '';
+    return {
+      title: title || (typeof fm.youtrack_title === 'string' && fm.youtrack_title) || file.basename,
+      path: file.path, type, priority: priority.replace(/^./, c => c.toUpperCase()),
+      priorityValue: this.taxonomy.priorities.includes(priority) ? priority : '',
+      id: typeof fm.youtrack_id === 'string' ? fm.youtrack_id : '',
+      stale: fm.board_column !== 'done' && Date.now() - file.stat.mtime > 30 * 86400000,
+    };
+  }
+
+  boardCardMatches(model, query = '', type = '') {
+    if (type && model.type !== type) return false;
+    const haystack = boardSearchText([model.title,model.path,model.id,model.type].join(' '));
+    return boardSearchText(query).split(/\s+/).filter(Boolean).every(word => haystack.includes(word));
+  }
+
+  invalidateBoardNote(file) {
+    if (file) this.boardExcerptCache?.delete(file);
+    this.refreshBoardTools();
+    for (const entry of this.toolbars.values()) {
+      if (entry.boardPreview?.file === file) entry.boardPreview.refresh();
+    }
+  }
+
+  async loadBoardExcerpt(file) {
+    if (!this.active || this.app.vault.getAbstractFileByPath(file.path) !== file) return null;
+    const key = boardFileStamp(file);
+    const previous = this.boardExcerptCache.get(file);
+    if (previous?.key === key) return previous.promise;
+    const record = {key};
+    this.boardExcerptCache.set(file,record);
+    record.promise = (async () => {
+      const text = file.stat.size > 1024 * 1024 ? '' : await this.app.vault.cachedRead(file);
+      if (!this.active || this.boardExcerptCache.get(file) !== record || boardFileStamp(file) !== key ||
+          this.app.vault.getAbstractFileByPath(file.path) !== file) return null;
+      return this.boardNextStep(text);
+    })().catch(() => null);
+    return record.promise;
+  }
+
+  async readBoardPreview(file) {
+    const path = file.path;
+    if (!this.active || this.app.vault.getAbstractFileByPath(path) !== file) throw Error('Note not found.');
+    if (file.stat.size > 2 * 1024 * 1024) throw Error('This note is too large to preview. Use Open note.');
+    const body = boardBody(await this.app.vault.cachedRead(file));
+    if (!this.active || file.path !== path || this.app.vault.getAbstractFileByPath(path) !== file) throw Error('The note changed or could not be found.');
+    return {body:body.slice(0,50000),truncated:body.length > 50000};
+  }
+
+  refreshBoardTools() {
+    if (!this.active) return;
+    for (const entry of this.toolbars.values()) this.mountBoardTools(entry);
+  }
+
+  clearBoardTools(entry) {
+    entry.boardPreview?.close();
+    entry.boardPopover?.close();
+    for (const card of entry.boardCards?.keys() || []) {
+      card.classList.remove('aim-card-managed','aim-card-filtered');
+      card.querySelector('.aim-card-details')?.remove();
+    }
+    entry.boardCards = new Map();
+    entry.boardTools?.remove();
+    entry.boardTools = null;
+  }
+
+  mountBoardTools(entry) {
+    const board = entry.host?.querySelector('.obk-board');
+    if (!board || !this.active) return;
+    const doc = entry.scope.ownerDocument;
+    if (!entry.boardTools) {
+      entry.boardCards = new Map();
+      const row = entry.boardTools = doc.createElement('div');
+      row.className = 'aim-board-tools';
+      row.setAttribute('role','search'); row.setAttribute('aria-label','Filter board cards');
+      const search = entry.boardSearch = doc.createElement('input');
+      search.type = 'search'; search.placeholder = 'Search cards…';
+      search.setAttribute('aria-label','Search cards'); search.title = 'Search card titles, paths and issue IDs';
+      search.value = entry.boardQuery || '';
+      const type = entry.boardTypeSelect = doc.createElement('select');
+      type.setAttribute('aria-label','Filter by Type');
+      const clear = entry.boardClear = doc.createElement('button');
+      clear.type = 'button'; clear.textContent = 'Clear'; clear.setAttribute('aria-label','Clear card filters');
+      const count = entry.boardCount = doc.createElement('span');
+      count.className = 'aim-board-count'; count.setAttribute('role','status'); count.setAttribute('aria-live','polite');
+      search.addEventListener('input', () => { entry.boardQuery = search.value; this.filterBoardCards(entry); });
+      search.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && search.value) { event.preventDefault(); event.stopPropagation(); search.value = ''; entry.boardQuery = ''; this.filterBoardCards(entry); }
+      });
+      type.addEventListener('change', () => { entry.boardType = type.value; this.filterBoardCards(entry); });
+      clear.addEventListener('click', () => {
+        entry.boardQuery = ''; entry.boardType = ''; search.value = ''; type.value = '';
+        this.filterBoardCards(entry); search.focus();
+      });
+      row.append(search,type,clear,count);
+      entry.boardTypeSignature = null;
+    }
+    if (entry.home.nextElementSibling !== entry.boardTools) entry.home.after(entry.boardTools);
+    const types = this.categoryValues(), signature = JSON.stringify(types);
+    if (entry.boardTypeSignature !== signature) {
+      const select = entry.boardTypeSelect;
+      select.replaceChildren();
+      for (const value of ['', ...types]) {
+        const option = doc.createElement('option'); option.value = value; option.textContent = value || 'All types'; select.append(option);
+      }
+      if (!types.includes(entry.boardType)) entry.boardType = '';
+      select.value = entry.boardType || '';
+      entry.boardTypeSignature = signature;
+    }
+    const live = new Set();
+    for (const card of board.querySelectorAll(CARD_SELECTOR)) {
+      if (card.matches('.sortable-ghost,.sortable-fallback,.sortable-drag,.obk-card-ghost,.obk-card-dragging')) { live.add(card); continue; }
+      const file = this.app.vault.getAbstractFileByPath(card.getAttribute('data-entry-path'));
+      if (!(file instanceof TFile) || file.extension !== 'md') continue;
+      live.add(card);
+      let state = entry.boardCards.get(card);
+      if (state && (state.file !== file || !card.contains(state.details))) {
+        state.details.remove(); entry.boardCards.delete(card); state = null;
+      }
+      if (!state) {
+        const details = doc.createElement('div'); details.className = 'aim-card-details';
+        const summary = doc.createElement('p'); summary.className = 'aim-card-summary'; summary.hidden = true;
+        const footer = doc.createElement('div'); footer.className = 'aim-card-footer';
+        const chips = doc.createElement('div'); chips.className = 'aim-card-chips';
+        const preview = doc.createElement('button'); preview.type = 'button'; preview.className = 'aim-card-preview'; preview.textContent = 'Preview';
+        preview.setAttribute('aria-haspopup','dialog'); preview.setAttribute('aria-expanded','false');
+        footer.append(chips,preview); details.append(summary,footer); card.append(details);
+        state = {file,details,summary,chips,preview}; entry.boardCards.set(card,state);
+        for (const name of ['pointerdown','mousedown','click','dblclick','auxclick']) footer.addEventListener(name, e => e.stopPropagation());
+        footer.addEventListener('mouseover', e => e.stopPropagation());
+        preview.addEventListener('click', () => {
+          if (entry.boardPreview?.file === file) { entry.boardPreview.close(true); return; }
+          entry.boardPreview?.close();
+          entry.boardPreview = new BoardNotePreview(this,entry,file,preview);
+          entry.boardPreview.open();
+        });
+        card.classList.add('aim-card-managed');
+      }
+      const model = this.boardCardModel(file,card.querySelector('.obk-card-title')?.textContent);
+      const modelKey = JSON.stringify(model);
+      if (state.modelKey !== modelKey) {
+        state.model = model; state.modelKey = modelKey;
+        state.preview.setAttribute('aria-label','Preview ' + model.title);
+        state.chips.replaceChildren();
+        for (const [key,label] of [['priority',model.priority],['category',model.type]]) {
+          if (!label) continue;
+          const chip = doc.createElement('button'); chip.type = 'button'; chip.className = 'aim-card-chip';
+          chip.textContent = label; chip.dataset.property = key;
+          if (key === 'priority' && model.priorityValue) chip.dataset.priority = model.priorityValue;
+          chip.title = key === 'category' ? 'Type: ' + label + '. Choosing a Type moves this note to its Hub folder.' : 'Priority: ' + label;
+          chip.setAttribute('aria-label',NOTE_FIELDS[key] + ': ' + label);
+          chip.setAttribute('aria-haspopup','dialog'); chip.setAttribute('aria-expanded','false');
+          chip.addEventListener('click', () => {
+            if (entry.boardPopover?.anchor === chip) { entry.boardPopover.close(true); return; }
+            entry.boardPopover?.close();
+            const picker = entry.boardPopover = new NotePropertyPopover(this,chip,file,key);
+            picker.onClose = () => { if (entry.boardPopover === picker) entry.boardPopover = null; };
+            picker.open();
+          });
+          state.chips.append(chip);
+        }
+        if (model.stale) { const stale = doc.createElement('span'); stale.className = 'aim-card-stale'; stale.textContent = 'Stale'; stale.title = 'No note edits in the last 30 days'; state.chips.append(stale); }
+      }
+      const excerptKey = boardFileStamp(file);
+      const cached = this.boardExcerptCache.get(file);
+      if (state.excerptKey !== excerptKey || state.excerptRecord !== cached) {
+        state.excerptKey = excerptKey;
+        const job = this.loadBoardExcerpt(file);
+        state.excerptRecord = this.boardExcerptCache.get(file);
+        const record = state.excerptRecord;
+        void job.then(value => {
+          if (!this.active || !card.isConnected || entry.boardCards.get(card) !== state || state.excerptRecord !== record) return;
+          homeText(state.summary,value || ''); state.summary.hidden = !value;
+        });
+      }
+    }
+    for (const [card,state] of entry.boardCards) if (!live.has(card)) {
+      card.classList.remove('aim-card-managed','aim-card-filtered'); state.details.remove(); entry.boardCards.delete(card);
+    }
+    if (entry.boardPopover && !entry.boardPopover.anchor.isConnected) entry.boardPopover.close();
+    if (entry.boardPreview) {
+      const replacement = [...entry.boardCards.values()].find(s => s.file === entry.boardPreview.file);
+      if (!replacement) entry.boardPreview.close();
+      else entry.boardPreview.setAnchor(replacement.preview);
+    }
+    this.filterBoardCards(entry);
+  }
+
+  filterBoardCards(entry) {
+    if (!entry.boardTools) return;
+    let shown = 0;
+    for (const [card,state] of entry.boardCards) {
+      const visible = this.boardCardMatches(state.model,entry.boardQuery,entry.boardType);
+      card.classList.toggle('aim-card-filtered',!visible);
+      if (visible) shown++;
+    }
+    const total = entry.boardCards.size;
+    const filtered = !!(entry.boardQuery?.trim() || entry.boardType);
+    homeText(entry.boardCount, filtered ? shown + ' of ' + total + ' cards' + (shown ? '' : ' · No matches') : total + ' cards');
+    entry.boardClear.hidden = !filtered;
+  }
+
   refreshToolbars() {
     if (!this.active) return;
     for (const entry of this.toolbars.values()) this.updateToolbar(entry);
@@ -473,7 +708,8 @@ class AIMultipleKanbanExtras extends Plugin {
     // Keep the established board minimum; very short panels scroll instead of crushing either region.
     const available = entry.host?.clientHeight || 0;
     const scrollbar = Math.max(0, (entry.homeGrid.offsetHeight || 0) - (entry.homeGrid.clientHeight || 0));
-    const max = available ? Math.max(300, Math.min(560, Math.floor(available - padding(entry.host) - heading - padding(entry.homeGrid) - scrollbar - 16 - 380))) : 560;
+    const filters = entry.boardTools?.getBoundingClientRect().height || 0;
+    const max = available ? Math.max(300, Math.min(560, Math.floor(available - padding(entry.host) - heading - padding(entry.homeGrid) - scrollbar - filters - 16 - 380))) : 560;
     return {min:300, max};
   }
 
@@ -3594,6 +3830,102 @@ class HomeCalendarModal extends Modal {
   onClose() { this.plugin.cancelGoogleSignIn(); this.contentEl.replaceChildren(); if (this.plugin.calendarModal === this) this.plugin.calendarModal = null; }
 }
 
+class BoardNotePreview {
+  constructor(plugin, entry, file, anchor) {
+    this.plugin = plugin; this.entry = entry; this.file = file; this.anchor = anchor;
+    this.doc = anchor.ownerDocument; this.win = this.doc.defaultView; this.revision = 0;
+  }
+  element(tag, className, text) {
+    const el = this.doc.createElement(tag); el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  open() {
+    this.root = this.element('section','aim-board-preview');
+    this.root.setAttribute('role','dialog'); this.root.setAttribute('aria-modal','false');
+    this.root.setAttribute('aria-label','Note preview');
+    const header = this.element('div','aim-board-preview-header');
+    this.title = this.element('h2','aim-board-preview-title');
+    this.closeButton = this.element('button','aim-board-preview-close');
+    this.closeButton.type = 'button'; this.closeButton.setAttribute('aria-label','Close preview');
+    setIcon(this.closeButton,'x'); this.closeButton.addEventListener('click',() => this.close(true));
+    header.append(this.title,this.closeButton);
+    this.path = this.element('div','aim-board-preview-path');
+    this.body = this.element('div','aim-board-preview-body'); this.body.tabIndex = 0;
+    this.body.setAttribute('aria-label','Note contents');
+    const footer = this.element('div','aim-board-preview-footer');
+    this.message = this.element('span','aim-board-preview-message'); this.message.setAttribute('role','status');
+    this.openButton = this.element('button','','Open note'); this.openButton.type = 'button';
+    this.openButton.addEventListener('click',() => {
+      if (this.plugin.app.vault.getAbstractFileByPath(this.file.path) !== this.file) { this.refresh(); return; }
+      const file = this.file; this.close();
+      void this.plugin.runAction(async() => {
+        const existing = this.plugin.app.workspace.getLeavesOfType('markdown').find(leaf => leaf.view.file === file);
+        if (existing) await this.plugin.app.workspace.revealLeaf(existing);
+        else await this.plugin.app.workspace.getLeaf('tab').openFile(file);
+      });
+    });
+    footer.append(this.message,this.openButton);
+    this.root.append(header,this.path,this.body,footer); this.doc.body.append(this.root);
+    this.setAnchor(this.anchor);
+    this.outside = event => { if (!this.root.contains(event.target) && !this.anchor.contains(event.target)) this.close(); };
+    this.keydown = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); this.close(true); } };
+    this.reposition = () => this.position();
+    this.doc.addEventListener('pointerdown',this.outside,true);
+    this.root.addEventListener('keydown',this.keydown);
+    this.doc.addEventListener('scroll',this.reposition,true);
+    this.win.addEventListener('resize',this.reposition);
+    this.position(); this.closeButton.focus(); void this.refresh();
+  }
+  setAnchor(anchor) {
+    if (this.anchor !== anchor) this.anchor?.setAttribute('aria-expanded','false');
+    this.anchor = anchor; this.anchor.setAttribute('aria-expanded','true');
+  }
+  position() {
+    if (this.closed) return;
+    const box = this.entry.host.getBoundingClientRect();
+    const width = Math.max(240,Math.min(460,box.width - 20,this.win.innerWidth - 24));
+    const top = Math.max(12,Math.min(box.top + 12,this.win.innerHeight - 260));
+    this.root.style.width = width + 'px';
+    this.root.style.left = Math.max(12,Math.min(box.right - width - 10,this.win.innerWidth - width - 12)) + 'px';
+    this.root.style.top = top + 'px';
+    this.root.style.maxHeight = Math.max(180,this.win.innerHeight - top - 20) + 'px';
+  }
+  async refresh() {
+    if (this.closed) return;
+    const revision = ++this.revision;
+    const card = [...(this.entry.boardCards?.values() || [])].find(state => state.file === this.file);
+    homeText(this.title,card?.model.title || this.plugin.boardCardModel(this.file).title); homeText(this.path,this.file.path);
+    homeText(this.message,'Loading…'); this.body.setAttribute('aria-busy','true');
+    try {
+      const result = await this.plugin.readBoardPreview(this.file);
+      if (this.closed || revision !== this.revision) return;
+      const scroll = this.body.scrollTop;
+      // Render a small text-only Markdown subset. No embeds, HTML, plugins or remote image requests.
+      renderBoardPreviewText(this.doc,this.body,result.body);
+      this.body.scrollTop = scroll;
+      homeText(this.message,result.truncated ? 'Preview shortened · Open note for the rest' : 'Read-only preview');
+      this.openButton.disabled = false;
+    } catch (_) {
+      if (this.closed || revision !== this.revision) return;
+      homeText(this.body,'Preview unavailable. Try opening the note.');
+      homeText(this.message,'Could not load preview');
+      this.openButton.disabled = this.plugin.app.vault.getAbstractFileByPath(this.file.path) !== this.file;
+    } finally {
+      if (!this.closed && revision === this.revision) this.body.setAttribute('aria-busy','false');
+    }
+  }
+  close(restoreFocus = false) {
+    if (this.closed) return;
+    this.closed = true; this.revision++;
+    this.doc.removeEventListener('pointerdown',this.outside,true);
+    this.doc.removeEventListener('scroll',this.reposition,true); this.win.removeEventListener('resize',this.reposition);
+    this.root?.remove(); this.anchor.setAttribute('aria-expanded','false');
+    if (restoreFocus && this.anchor.isConnected) this.anchor.focus();
+    if (this.entry.boardPreview === this) this.entry.boardPreview = null;
+  }
+}
+
 class NotePropertyPopover {
   constructor(plugin, anchor, file, key) {
     this.plugin = plugin;
@@ -4324,6 +4656,43 @@ function homeElement(doc, tag, className = '', text = '') {
   const node = doc.createElement(tag); node.className = className; node.textContent = text; return node;
 }
 
+function boardBody(text) { return String(text || '').replace(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/,'').trim(); }
+function boardFileStamp(file) { return [file.path,file.stat.mtime,file.stat.size].join(':'); }
+function boardSearchText(text) { return String(text || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/ı/g,'i'); }
+function boardPlainText(text) {
+  return String(text).replace(/!\[\[([^\]]+)\]\]/g,'$1').replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g,'$2')
+    .replace(/\[\[([^\]]+)\]\]/g,'$1').replace(/!?\[([^\]]*)\]\([^)]*\)/g,'$1')
+    .replace(/(\*\*|__)(.+?)\1/g,'$2').replace(/\*([^*\n]+)\*/g,'$1')
+    .replace(/\x60([^\x60]+)\x60/g,'$1').replace(/\s+/g,' ').trim();
+}
+function renderBoardPreviewText(doc, target, text) {
+  target.replaceChildren();
+  if (!text.trim()) { const p = doc.createElement('p'); p.textContent = 'This note is empty.'; target.append(p); return; }
+  let fence = '', code = null, paragraph = null, list = null;
+  for (const line of text.split(/\r?\n/)) {
+    const marker = line.trim().match(/^(\x60{3,}|~{3,})/);
+    if (marker) {
+      if (!fence) { fence = marker[1][0]; code = doc.createElement('pre'); target.append(code); }
+      else if (fence === marker[1][0]) { fence = ''; code = null; }
+      paragraph = null; list = null; continue;
+    }
+    if (fence) { code.textContent += line + '\n'; continue; }
+    if (!line.trim()) { paragraph = null; list = null; continue; }
+    const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (heading) {
+      const h = doc.createElement('h' + Math.min(heading[1].length + 2,6));
+      h.textContent = boardPlainText(heading[2]); target.append(h); paragraph = null; list = null; continue;
+    }
+    const item = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.+)$/);
+    if (item) {
+      if (!list) { list = doc.createElement('ul'); target.append(list); }
+      const li = doc.createElement('li'); li.textContent = boardPlainText(item[1]); list.append(li); paragraph = null; continue;
+    }
+    list = null;
+    if (!paragraph) { paragraph = doc.createElement('p'); target.append(paragraph); }
+    paragraph.textContent += (paragraph.textContent ? '\n' : '') + boardPlainText(line);
+  }
+}
 function homeText(node, text) { if (node.textContent !== text) node.textContent = text; }
 
 function homeDay(date) {

@@ -9,6 +9,57 @@ const taxonomy = JSON.parse(fs.readFileSync(path.join(root, '../../../Hub/_kanba
 Object.assign(taxonomy,{folder_to_category:{Data:'data',MSc:'msc',Personal:'personal',Other:'other'},view_to_folder:{Data:'Hub/Data',MSc:'Hub/MSc',Benchmark:'Hub/Benchmark'}});
 const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('Board excerpts use the next-step section without YAML, fenced examples or empty placeholders',async()=>{
+ const f=fixture();await f.start();
+ assert.equal(typeof f.plugin.boardNextStep,'function');
+ const text='---\nsecret: not a preview\n---\n```md\n## Sonraki adım\nWrong example\n```\n## Sonraki adım\n\n- [ ] **Read** [[Report|the report]] and [compare](https://example.test).\n## Tamamlanma kriteri\nDo not include';
+ assert.equal(f.plugin.boardNextStep(text),'Read the report and compare.');
+ assert.equal(f.plugin.boardNextStep('## Sonraki adım\n- [ ]\n## Tamamlanma kriteri\nDone'),'');
+ assert.equal(f.plugin.boardNextStep('# Ordinary note\nBody without a next step'),'');
+ assert.equal(f.plugin.boardNextStep('## Next step\n<!--\nHidden\n-->\nCompare model_name and \x60api_key\x60.'),'Compare model_name and api_key.');
+ assert.equal(f.plugin.boardNextStep('## Next step\n'+'x'.repeat(400)).length,180);
+ f.plugin.unload();
+});
+
+test('Board filters combine title or ID search with the effective live Type without writing metadata',async()=>{
+ const f=fixture([['Hub/MSc/Nested/İSTATİSTİK.md',{tags:['kanban'],category:'msc',priority:'high',youtrack_id:'TEAM-123'}]]);await f.start();
+ assert.equal(typeof f.plugin.boardCardModel,'function');
+ const file=f.files.get('Hub/MSc/Nested/İSTATİSTİK.md');const before=JSON.stringify(f.caches.get(file.path));
+ const model=f.plugin.boardCardModel(file,'İSTATİSTİK araştırması');
+ assert.equal(model.type,'MSc');assert.equal(model.priority,'High');
+ assert.equal(f.plugin.boardCardMatches(model,'istatistik','MSc'),true);
+ assert.equal(f.plugin.boardCardMatches(model,'team-123','MSc'),true);
+ assert.equal(f.plugin.boardCardMatches(model,'istatistik','Data'),false);
+ assert.equal(f.plugin.boardCardMatches(model,'missing',''),false);
+ assert.equal(JSON.stringify(f.caches.get(file.path)),before);assert.equal(f.saves.length,0);
+ f.caches.get(file.path).frontmatter.category='gone';assert.equal(f.plugin.boardCardModel(file).type,'MSc');
+ f.plugin.unload();
+});
+
+test('Board excerpt reads are shared and reject late results after invalidation or unload',async()=>{
+ const f=fixture([['Hub/Other/Task.md',{tags:['kanban']}]]);await f.start();
+ assert.equal(typeof f.plugin.loadBoardExcerpt,'function');
+ const file=f.files.get('Hub/Other/Task.md');let release,reads=0;
+ f.app.vault.cachedRead=()=>{reads++;return new Promise(r=>release=r);};
+ const first=f.plugin.loadBoardExcerpt(file),same=f.plugin.loadBoardExcerpt(file);
+ assert.equal(reads,1);f.plugin.invalidateBoardNote(file);release('## Sonraki adım\nOld');
+ assert.equal(await first,null);assert.equal(await same,null);
+ const second=f.plugin.loadBoardExcerpt(file);release('## Sonraki adım\nCurrent');assert.equal(await second,'Current');
+ assert.equal(await f.plugin.loadBoardExcerpt(file),'Current');assert.equal(reads,2);
+ f.plugin.invalidateBoardNote(file);const last=f.plugin.loadBoardExcerpt(file);f.plugin.unload();release('## Sonraki adım\nLate');assert.equal(await last,null);
+});
+
+test('Board preview removes frontmatter, bounds text and rejects deleted or moved targets after a read',async()=>{
+ const f=fixture([['Hub/Other/Task.md',{tags:['kanban']}]]);await f.start();
+ assert.equal(typeof f.plugin.readBoardPreview,'function');
+ const file=f.files.get('Hub/Other/Task.md');file.content='---\nprivate_metadata: value\n---\n# Heading\nBody';
+ const preview=await f.plugin.readBoardPreview(file);assert.equal(preview.body,'# Heading\nBody');assert.equal(preview.truncated,false);
+ file.content='x'.repeat(60000);const long=await f.plugin.readBoardPreview(file);assert.equal(long.body.length,50000);assert.equal(long.truncated,true);
+ let release;f.app.vault.cachedRead=()=>new Promise(r=>release=r);const pending=f.plugin.readBoardPreview(file);
+ f.files.delete(file.path);release('Old body');await assert.rejects(pending,/changed|found/i);
+ f.plugin.unload();
+});
+
 test('Calendar and Mail merge legacy slots without writing startup settings or losing hidden choices',async()=>{
  for (const [saved,expected] of [
   [['calendar','youtrack','mail'],['calendar','youtrack','slack']],

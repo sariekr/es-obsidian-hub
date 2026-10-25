@@ -360,6 +360,114 @@
   min-height: 380px;
   padding-bottom: 0;
 }
+
+/* Board refinement: scoped to the managed dashboard, including clean unload. */
+.aim-board-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 4px 0 10px;
+  color: var(--text-normal);
+  font: 12px var(--font-interface);
+}
+.aim-board-tools input[type="search"] {
+  width: 230px;
+  min-width: 140px;
+  max-width: 100%;
+  height: 30px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.aim-board-tools input::placeholder { color: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted)); }
+.aim-board-tools select { max-width: 180px; height: 30px; font: inherit; }
+.aim-board-tools button { height: 28px; padding: 0 8px; font: inherit; }
+.aim-board-count { margin-left: auto; font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted)); }
+.aim-board-tools [hidden],
+.aim-card-details [hidden],
+.aim-home-host .aim-card-filtered { display: none !important; }
+.aim-home-host .aim-card-managed {
+  padding: 12px;
+  border-radius: 12px;
+}
+.aim-home-host .aim-card-managed .obk-card-title {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+.aim-home-host .aim-card-managed > .obk-card-property:is(
+  [data-label="formula.priority_label"],[data-label="note.priority"],
+  [data-label="formula.category_label"],[data-label="note.category"],
+  [data-label="formula.is_stale"]) { display: none; }
+.aim-card-summary {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aim-card-footer { display: flex; gap: 8px; align-items: center; margin-top: 9px; }
+.aim-card-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; }
+.aim-card-footer button {
+  font: 11px var(--font-interface);
+  height: 25px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  box-shadow: none;
+  border-radius: 6px;
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--text-normal) 6%, var(--background-primary));
+  cursor: pointer;
+}
+.aim-card-footer .aim-card-preview { margin-left: auto; flex-shrink: 0; background: transparent; color: var(--text-normal); }
+.aim-card-footer button:hover,
+.aim-card-footer button[aria-expanded="true"] { background: color-mix(in srgb, var(--interactive-accent) 12%, var(--background-primary)); border-color: var(--background-modifier-border); }
+.aim-card-chip[data-priority]::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; background: var(--text-muted); flex-shrink: 0; }
+.aim-card-chip[data-priority="high"]::before { background: var(--color-orange, var(--interactive-accent)); }
+.aim-card-chip[data-priority="urgent"]::before { background: var(--text-error); }
+.aim-card-chip[data-priority="medium"]::before { background: var(--color-yellow, var(--interactive-accent)); }
+.aim-card-stale { font-size: 11px; color: var(--text-normal); text-decoration: underline dotted var(--text-muted); text-underline-offset: 3px; }
+.aim-board-tools :is(input,select,button):focus-visible,
+.aim-card-footer button:focus-visible,
+.aim-board-preview :is(button,[tabindex]):focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
+.aim-board-preview {
+  position: fixed;
+  z-index: var(--layer-popover, 30);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 14px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  font: 13px/1.55 var(--font-interface);
+}
+.aim-board-preview-header { display: flex; gap: 12px; align-items: flex-start; padding: 18px 18px 4px; }
+.aim-board-preview-title { margin: 0; flex: 1; font-size: 18px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.aim-board-preview-close { padding: 5px; width: 28px; height: 28px; flex-shrink: 0; box-shadow: none; background: transparent; }
+.aim-board-preview-close svg { width: 16px; height: 16px; }
+.aim-board-preview-path { padding: 0 18px 12px; font-size: 11px; overflow-wrap: anywhere; color: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted)); }
+.aim-board-preview-body { overflow: auto; overscroll-behavior: contain; min-height: 100px; padding: 2px 18px 18px; border-top: 1px solid var(--background-modifier-border); }
+.aim-board-preview-body :is(h3,h4,h5,h6) { margin: 20px 0 8px; font-size: 14px; font-weight: 600; color: var(--text-normal); }
+.aim-board-preview-body p { white-space: pre-wrap; margin: 10px 0; overflow-wrap: anywhere; }
+.aim-board-preview-body ul { padding-left: 20px; margin: 10px 0; overflow-wrap: anywhere; }
+.aim-board-preview-body pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 10px; background: var(--background-secondary); border-radius: 8px; font-size: 12px; }
+.aim-board-preview-footer { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--background-modifier-border); padding: 12px 18px; }
+.aim-board-preview-message { font-size: 11px; flex: 1; }
+.aim-board-preview-footer button { flex-shrink: 0; }
+@media (max-width: 570px) {
+  .aim-board-tools input[type="search"] { flex: 1 1 160px; }
+  .aim-board-tools select { max-width: 140px; }
+}
 .aim-home {
   --aim-home-secondary: color-mix(in srgb, var(--text-normal) 78%, var(--text-muted));
   --aim-home-link: color-mix(in srgb, var(--text-accent) 55%, var(--text-normal));
