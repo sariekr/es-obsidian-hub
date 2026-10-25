@@ -49,11 +49,11 @@ Implemented: **Customize → Type icons** with twelve built-in choices and neutr
 
 [Verification](VERIFICATION.md) owns the detailed evidence: 200 Node / 21 Python tests, browser DOM/contrast checks and real native dark/light/narrow interaction checks in the disconnected `.local/demo-vault`. Five demo-only icon choices were saved via the UI. All 13 original demo notes stayed unchanged; the temporary QA card was removed. The demo runtime was copied only while disabled, and its board was left open. The source has no default Type mapping. Demo files/settings remain ignored and excluded from the distribution.
 
-The user requested a new GitHub PR for these verified changes. Delivery uses `feat/type-icons-colors` against `main`; check the [branch's PR](https://github.com/sariekr/es-obsidian-hub/pulls?q=is%3Apr+head%3Afeat%2Ftype-icons-colors) and its latest-head checks for live status. This task does not authorize merging that new PR or publishing a release. Do not reuse the previous session's PR #1 merge instruction for this PR.
+The requested delivery is [PR #2](https://github.com/sariekr/es-obsidian-hub/pull/2), open from `feat/type-icons-colors` against `main`. The implementation commit is `39da789`; this handoff follow-up records the PR link without embedding its own commit hash. The push check passed; verify the PR's latest-head checks for final delivery status. This task does not authorize merging PR #2 or publishing a release. Do not reuse the previous session's PR #1 merge instruction for this PR.
 
 ## Next steps
 
-Review the icon/color PR and its latest-head checks. The built-in implementation is ready for review; decide separately whether to merge/release it or try Style Settings 1.0.9 for broader palette controls in the disconnected demo.
+Review PR #2 and its latest-head checks. The built-in implementation is ready for review; decide separately whether to merge/release it or try Style Settings 1.0.9 for broader palette controls in the disconnected demo.
 
 Optional navigation plugins require their own pinned-version native demo and package/license review. Keep the current Obsidian version boundary; do not upgrade the app or assume custom kanban integration from a plugin's explorer support. No need to repeat stable passing checks unless relevant code changes.
 
