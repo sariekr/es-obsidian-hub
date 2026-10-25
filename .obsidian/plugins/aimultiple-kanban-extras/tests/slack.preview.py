@@ -220,15 +220,32 @@ checks=r'''
   r.slackConnected=true;r.slackAccount={teamName:'Demo workspace',userName:'demo'};
   r.slackSnapshot={fetchedAt:Date.now(),rows:Array.from({length:12},(_,i)=>({author:'Demo colleague',time:Date.now()-i*10800000,text:['Could you review the launch checklist before our meeting?','The updated project notes are ready.'][i%2],channel:'#team-notes',sources:['mention'],url:'https://demo.slack.com/archives/CDEMO/p'+i}))};
   r.youtrackProfile={host:'tracker.example.com',project:'DEMO',login:'Alex'};
+  const ytRow=([id,title,state,priority='Normal'])=>({id,title,state,priority,assignee:'Alex',url:'https://tracker.example.com/issue/'+id});
   r.youtrackSnapshot={schema:1,source:'YouTrack MCP',assignee:'Alex',fetchedAt:new Date().toISOString(),issues:[
    ['DEMO-42','Prepare the launch checklist','In Progress','High'],
-   ['DEMO-38','Review the onboarding copy','To do','Normal'],
-   ['DEMO-36','Document the export flow','In Progress','Normal']
-  ].map(([id,title,state,priority])=>({id,title,state,priority,assignee:'Alex',url:'https://tracker.example.com/issue/'+id}))};
+   ['DEMO-38','Review the onboarding copy','To do'],
+   ['DEMO-36','Document the export flow','In Progress'],
+   ['DEMO-46','Check the draft','Review']
+  ].map(ytRow),completed:{hasMore:false,issues:[
+   ['DEMO-44','Publish the quick start','Done'],['DEMO-45','Consolidate the old checklist','Duplicate']
+  ].map(ytRow)}};
   r.refreshHomes();
-  verify([...finalHome.youtrackList.querySelectorAll('.aim-widget-group')].map(x=>x.textContent).join('|')==='In Progress|To do','YouTrack uses actual State labels');
-  verify([...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].map(x=>x.dataset.youtrackId).join('|')==='DEMO-42|DEMO-36|DEMO-38','State grouping retains in-group order and identities');
-  verify([...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].every(x=>x.draggable&&x.href.endsWith(x.dataset.youtrackId)),'grouped issues keep drag/open actions');
+  const shownIds=()=>[...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].map(x=>x.dataset.youtrackId).join('|');
+  const ytReads=[];const oldRefresh=r.refreshYouTrack;r.refreshYouTrack=()=>ytReads.push('read');
+  verify(shownIds()==='DEMO-38','YouTrack starts on To do');
+  verify(finalHome.youtrackFilters.get('backlog').getAttribute('aria-pressed')==='true','selected filter is accessible');
+  finalHome.youtrackFilters.get('in-progress').click();
+  verify(shownIds()==='DEMO-42|DEMO-36','In progress preserves source order and identities');
+  finalHome.youtrackFilters.get('done').click();
+  verify(shownIds()==='DEMO-44|DEMO-45','Done includes resolved states');
+  verify([...finalHome.youtrackList.querySelectorAll('.aim-widget-group')].map(x=>x.textContent).join('|')==='Done|Duplicate','Done keeps actual State labels');
+  finalHome.youtrackFilters.get('other').click();verify(shownIds()==='DEMO-46','Other keeps unmatched State accessible');
+  const completedRows=r.youtrackSnapshot.completed;delete r.youtrackSnapshot.completed;
+  finalHome.youtrackFilters.get('done').click();
+  verify(finalHome.youtrackList.textContent.includes('not loaded yet'),'legacy snapshots explain missing completed results');
+  r.youtrackSnapshot.completed=completedRows;finalHome.youtrackFilters.get('backlog').click();
+  verify(ytReads.length===0&&f.files.size===fileCount&&JSON.stringify(f.saved)===settingsBefore,'filters do not refresh, write settings or mutate notes');r.refreshYouTrack=oldRefresh;
+  verify([...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].every(x=>x.draggable&&x.href.endsWith(x.dataset.youtrackId)),'filtered issues keep drag/open actions');
   const grid=document.querySelector('.aim-home-grid'),tiles=[...document.querySelectorAll('.aim-home-tile')];
   verify(new Set(tiles.map(x=>Math.round(x.getBoundingClientRect().height))).size===1,'equal widget heights');
   if(query.has('narrow')||query.has('compact'))verify(grid.scrollWidth>grid.clientWidth,'narrow row scrolls horizontally');

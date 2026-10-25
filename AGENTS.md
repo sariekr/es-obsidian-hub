@@ -2,7 +2,7 @@
 
 This repository is a redistributable **starter Obsidian vault for macOS**, not the maintainer's personal vault. Read README.md, docs/CONNECTIONS.md and docs/VERIFICATION.md first. The primary user is new to Obsidian. Keep the UI in English and explain setup in the user's language.
 
-Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.4.0 adds a symmetric widget frame, grouped lists, one Refresh all widgets action and visible-view automatic reads. [docs/DESIGN.md](docs/DESIGN.md) owns shared UI geometry, typography and color rules; follow it for widget changes. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) separates plugin research from the implemented built-in icons; no additional plugin is bundled or enabled.
+Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.5.0 adds YouTrack To do / In progress / Done filters to the symmetric widget frame and shared refresh. Preserve the bounded completed page, legacy snapshots and conditional Other filter; selecting a filter never performs a network read or a State write. [docs/DESIGN.md](docs/DESIGN.md) owns shared UI geometry, typography and color rules; follow it for widget changes. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) separates plugin research from the implemented built-in icons; no additional plugin is bundled or enabled.
 
 ## Install for a new user
 

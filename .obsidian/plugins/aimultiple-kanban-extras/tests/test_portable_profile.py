@@ -19,6 +19,7 @@ class PortableProfileTests(unittest.TestCase):
         def call(name,args):
             seen.append((name,args))
             if name=='get_current_user': return {'login':'jane.doe'}
+            if '#Resolved' in args['query']: return {'issuesPage':[], 'hasNextPage':False}
             return {'issuesPage':[{'id':'TEAM-12','project':'TEAM','summary':'Example','resolvedAt':None,
                 'url':'https://friends.youtrack.cloud/issue/TEAM-12',
                 'customFields':{'Assignee':'jane.doe','State':'Open','Priority':'Normal'}}], 'hasNextPage':False}
