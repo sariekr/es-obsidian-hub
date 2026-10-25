@@ -41,7 +41,7 @@ Temporary browser previews and old QA folders are disposable output, not the can
 
 ## Current handoff — 26 October 2026
 
-Source **1.5.0** is prepared on `feat/youtrack-state-filters`, based on clean main at `225851871cafdd50c201f7a6fa7b03e39feba916`. [PR #3](https://github.com/sariekr/es-obsidian-hub/pull/3), containing shared refresh, symmetric widget frames and the Calendar marker fix, was merged at the user's request. The published download remains [v1.1.0](https://github.com/sariekr/es-obsidian-hub/releases/tag/v1.1.0).
+Source **1.5.0** was delivered in commit `af3bec2d9313ba99d3b57700a249ca1ae0e766a7` on `feat/youtrack-state-filters` through [PR #4](https://github.com/sariekr/es-obsidian-hub/pull/4), targeting `main`. At the handoff check on **26 October 2026, 01:20 Europe/Istanbul**, PR #4 was open, mergeable and both current-code CI runs had passed. The branch is based on main at `225851871cafdd50c201f7a6fa7b03e39feba916`. This handoff-only update follows that implementation commit; its final delivery and current-head checks are reported in the closing receipt. [PR #3](https://github.com/sariekr/es-obsidian-hub/pull/3), containing shared refresh, symmetric widget frames and the Calendar marker fix, was merged at the user's request. The published download remains [v1.1.0](https://github.com/sariekr/es-obsidian-hub/releases/tag/v1.1.0).
 
 Implemented: **To do / In progress / Done** replace the YouTrack project/context row. They reuse Slack's controls and selection style. To do is the initial view. An **Other** filter appears only for loaded unmatched open states. Filters are temporary view state: they do not request data, save settings, import notes or change remote State. The header counts visible rows; its tooltip retains configured project/account scope. Actual State headings and within-group order remain.
 
@@ -49,10 +49,14 @@ Refresh retains the existing complete open-issue read (maximum 400) and adds one
 
 Verified: **212 Node + 24 Python tests**, actual-runtime browser fixtures in desktop dark and 800px light, and disconnected native Obsidian **1.11.7** in `.local/demo-vault`. The native demo showed all three controls, selected-state changes and aligned frames at 300px; it remains on To do / Calendar Month with no account connected. Browser checks include mapped states, conditional Other, resolved variants, legacy snapshot guidance, no filter-triggered writes/reads and the existing geometry regressions. See [VERIFICATION.md](VERIFICATION.md). The feature was also deliberately adapted to the separately authorized personal installation; its private data and adapter are excluded from this repository.
 
+The separately authorized personal installation is complete at **0.32.0**. Its existing plugin README owns the private continuation and rollback record. The recorded native check was Obsidian 1.11.7, desktop dark, with the 408px preference retained; all three filters and a completed shared refresh were observed. Personal notes and plugin settings were unchanged. Its independent suites passed 198 Node / 24 Python tests. No further installation is pending, and this documentation handoff does not redeploy either vault.
+
 Research: JetBrains' documented resolved/unresolved semantics informed the bounded Done read, via Bright Data. No new community plugin was needed. [UI-RESEARCH.md](UI-RESEARCH.md) records the source; [DESIGN.md](DESIGN.md) owns the visual contract and [CONNECTIONS.md](CONNECTIONS.md) explains the filter limits.
 
 ## Next steps
 
-The delivery receipt identifies the new PR, exact pushed head and CI. Review/merge of this new feature and a public release remain separate decisions; the earlier request to merge existing PRs was fulfilled by merging PR #3. The 1.1.0 downloadable ZIP does not yet contain these source features.
+Implementation and personal installation are complete. [PR #4](https://github.com/sariekr/es-obsidian-hub/pull/4) is open for review; merge and a new public release remain separate decisions. No further feature work or vault deployment is queued.
+
+The earlier request to merge the then-open PRs was fulfilled by merging PR #3. The public download is still 1.1.0; source 1.5.0 has not been published as a release. Recheck PR #4 and its exact head before acting, since the GitHub state can change after this handoff.
 
 Continue after reading AGENTS.md, this section, DESIGN.md, VERIFICATION.md and UI-RESEARCH.md. Inspect Git and current PR state before editing. Keep the public source, fictional demo and personal installation independent. No real account writes or shared-demo live connection test were performed. Notebook Navigator sidebar installation, density switching and richer multi-day Agenda remain separate optional work; no extra plugin is required for these filters.
