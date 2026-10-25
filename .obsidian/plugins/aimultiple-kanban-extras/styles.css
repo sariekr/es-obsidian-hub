@@ -573,10 +573,53 @@
 }
 .aim-home-date, .aim-home-caption { color: var(--aim-home-secondary); }
 .aim-home-caption { font-size: 12px; line-height: 1.5; }
+/* Widget design contract — docs/DESIGN.md. Frame changes belong here, never per source. */
+.aim-home {
+  --aim-space-1: 4px;
+  --aim-space-2: 8px;
+  --aim-space-3: 12px;
+  --aim-space-4: 16px;
+  --aim-widget-title: var(--font-ui-medium, 14px);
+  --aim-widget-body-size: var(--font-ui-small, 13px);
+  --aim-widget-meta: var(--font-ui-smaller, 12px);
+  --aim-widget-header-height: 36px;
+  --aim-widget-controls-height: 40px;
+  --aim-widget-footer-height: 52px;
+}
+.aim-widget-header {
+  display:flex; align-items:center; justify-content:space-between; gap:var(--aim-space-2);
+  flex:0 0 var(--aim-widget-header-height); height:var(--aim-widget-header-height); min-width:0;
+  border-bottom:1px solid var(--aim-home-border); font-family:inherit;
+}
+.aim-widget-header h3 { flex-shrink:0; font-size:var(--aim-widget-title); line-height:20px; font-weight:600; }
+.aim-widget-header > .aim-home-caption { min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:var(--aim-widget-meta); line-height:16px; }
+.aim-widget-header .aim-ui-icon { width:16px; height:16px; }
+.aim-widget-controls {
+  display:flex; align-items:center; gap:var(--aim-space-1); flex:0 0 var(--aim-widget-controls-height);
+  height:var(--aim-widget-controls-height); min-width:0; margin:0; padding:4px 0 8px;
+  overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:thin;
+  font-size:var(--aim-widget-meta); line-height:16px;
+}
+.aim-home .aim-widget-controls button { flex-shrink:0; min-height:28px; height:28px; margin:0; padding:4px 8px; font-size:var(--aim-widget-meta); line-height:20px; }
+.aim-widget-context { color:var(--aim-home-secondary); text-overflow:ellipsis; display:block; padding-top:10px; }
+.aim-widget-body { display:flex; flex-direction:column; flex:1 1 0; min-height:0; min-width:0; overflow:hidden; }
+.aim-widget-body > [role="status"] { flex:0 1 auto; max-height:40%; overflow-y:auto; scrollbar-width:thin; }
+.aim-widget-footer {
+  display:grid; grid-template-rows:28px 16px; align-content:start; gap:0;
+  flex:0 0 var(--aim-widget-footer-height); height:var(--aim-widget-footer-height);
+  padding-top:7px; margin:0; border-top:1px solid var(--aim-home-border);
+  min-width:0; font-family:inherit; font-size:var(--aim-widget-meta); line-height:16px;
+}
+.aim-widget-footer-actions { display:flex; align-items:center; gap:var(--aim-space-2); min-width:0; overflow-x:auto; scrollbar-width:thin; }
+.aim-home .aim-widget-footer-actions button, .aim-widget-footer-actions a { flex-shrink:0; margin:0; padding:4px 0; min-height:28px; height:28px; font-size:var(--aim-widget-meta); line-height:20px; white-space:nowrap; }
+.aim-widget-footer > .aim-home-caption { display:block; min-width:0; font-size:var(--aim-widget-meta); line-height:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home .aim-widget-group { margin:12px 4px 4px; color:var(--aim-home-secondary); font:600 var(--aim-widget-meta)/16px var(--font-interface); }
+.aim-home .aim-widget-group:first-child { margin-top:4px; }
+
 .aim-home-grid {
   display: grid;
   grid-template-columns: repeat(var(--aim-home-columns, 3), minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--aim-space-4);
 }
 .aim-home-tile {
   min-width: 0;
@@ -586,17 +629,10 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  padding: 12px 14px;
+  padding: var(--aim-space-3);
   border: 1px solid var(--aim-home-border);
   border-radius: 16px;
   background: var(--background-primary);
-}
-.aim-home-tile > :not(.aim-home-bookmark):not(.aim-home-source-details):not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-youtrack-list):not(.aim-home-note-list):not(.aim-home-shortcut-list):not(.aim-home-pinned-links):not(.aim-home-pin-empty):not(.aim-home-scratch-input):not(.aim-home-slack-list):not(.aim-home-mail-list):not(.aim-home-shared-panel) { flex-shrink: 0; }
-.aim-home-tile-heading {
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 26px;
-  margin-bottom: 4px;
 }
 .aim-home button, .aim-home a {
   -webkit-tap-highlight-color: transparent;
@@ -642,7 +678,7 @@
 .aim-home-calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto repeat(var(--aim-calendar-weeks, 5), minmax(22px, 1fr));
+  grid-template-rows: 14px repeat(var(--aim-calendar-weeks, 5), minmax(18px, 1fr));
   align-items: stretch;
   gap: 2px;
   flex: 1;
@@ -652,15 +688,16 @@
   scrollbar-width: thin;
   font-variant-numeric: tabular-nums;
 }
-.aim-home-weekday { text-align: center; font-size: 11px; color: var(--aim-home-secondary); padding: 2px 0 4px; }
+.aim-home-weekday { text-align: center; font-size: 11px; line-height:14px; color: var(--aim-home-secondary); padding:0; }
 .aim-home .aim-home-day {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 22px;
-  padding: 0 2px 5px;
+  min-height: 18px;
+  padding: 0 2px;
   font-size: 13px;
+  line-height:18px;
 }
 .aim-home-day-number {
   display: inline-flex;
@@ -744,25 +781,12 @@
   font-size: 14px;
   background: var(--background-primary-alt);
 }
-.aim-home-tile-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 3px 8px;
-  padding-top: 8px;
-  margin-top: 8px;
-  border-top: 1px solid var(--aim-home-border);
-}
 .aim-home-calendar-link { gap: 7px; color: var(--aim-home-link); text-decoration: none; text-underline-offset: 3px; }
 .aim-home-calendar-link:hover { text-decoration: underline; }
 .aim-home-link-icon { display: inline-flex; }
 .aim-home-empty { margin: 8px 0; color: var(--aim-home-secondary); font-size: 13px; line-height: 1.6; }
 .aim-home-shortcut-list .aim-home-empty { grid-column: 1 / -1; }
-.aim-home-calendar-tabs { display: flex; gap: 4px; margin: 0 0 6px; }
-.aim-home .aim-home-calendar-tabs button { min-height: 26px; padding: 3px 12px; font-size: 12px; color: var(--aim-home-secondary); }
 .aim-home .aim-home-calendar-tabs button[aria-pressed="true"] { background: var(--background-primary-alt); color: var(--text-normal); font-weight: 600; }
-.aim-home-calendar-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 8px; margin-top: 4px; }
 .aim-home-agenda { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
 .aim-home-agenda-date { margin: 2px 0 10px; font-size: 13px; font-weight: 600; }
 .aim-home-meeting { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; padding: 9px 0; }
@@ -776,29 +800,24 @@
 .aim-home-feed-message { font-size: 13px; line-height: 1.5; color: var(--text-warning, var(--text-normal)); }
 .aim-home-sync-result { display: block; margin-top: 6px; }
 .aim-home-sync-result button { margin-left: 6px; }
-.aim-home-youtrack-list { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 5px; }
-.aim-home-issue { display: block; padding: 9px 3px; border-radius: 5px; color: var(--text-normal); text-decoration: none; }
+.aim-home-youtrack-list { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:thin; padding:0 4px 0 0; }
+.aim-home-issue { display:block; padding:8px 4px; border-radius:4px; color:var(--text-normal); text-decoration:none; }
 .aim-home-issue + .aim-home-issue { border-top: 1px solid var(--aim-home-border); }
 .aim-home-issue:hover { background: var(--background-modifier-hover); }
-.aim-home-issue .aim-home-note-name { font-size: 13px; }
-.aim-home-issue .aim-home-caption { display: block; font-size: 11px; }
-.aim-home-slack-list { flex: 1 1 0; min-height: 0; overflow-y: auto; scrollbar-width: thin; padding-right: 4px; }
-.aim-home-slack-tile > .aim-home-caption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px; }
-.aim-home-slack-filters { display: flex; gap: 3px; flex-wrap: wrap; margin: 0 0 8px; }
-.aim-home-slack-filters .aim-home-text-button { padding: 3px 7px; min-height: 26px; font-size: 11px; }
+.aim-home-issue .aim-home-note-name { font-size:var(--aim-widget-body-size); font-weight:600; line-height:20px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.aim-home-issue .aim-home-caption { display:block; font-size:var(--aim-widget-meta); line-height:16px; margin-top:4px; }
+.aim-home-slack-list { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:thin; padding:0 4px 0 0; }
 .aim-home-slack-filters button[aria-pressed="true"] { color: var(--text-accent); background: var(--background-modifier-hover); box-shadow: inset 0 0 0 1px var(--aim-home-border); }
-.aim-home-slack-mention { display: block; padding: 10px 3px; border-radius: 5px; color: var(--text-normal); text-decoration: none; }
+.aim-home-slack-mention { display:block; padding:8px 4px; border-radius:4px; color:var(--text-normal); text-decoration:none; }
 .aim-home-slack-mention + .aim-home-slack-mention { border-top: 1px solid var(--aim-home-border); }
 .aim-home-slack-mention:hover { background: var(--background-modifier-hover); }
 .aim-home-slack-mention:hover .aim-home-slack-text { text-decoration: underline; text-underline-offset: 3px; }
 .aim-home-slack-meta { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
-.aim-home-slack-author { font-weight: var(--font-semibold); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.aim-home-slack-time { color: var(--aim-home-secondary); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.aim-home-slack-channel { display: block; font-size: 11px; color: var(--aim-home-link); overflow-wrap: anywhere; margin: 2px 0 4px; }
-.aim-home-slack-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 13px; line-height: 1.45; }
-.aim-home-slack-message { margin: 6px 0 0; font-size: 12px; line-height: 1.4; color: var(--text-warning, var(--text-normal)); max-height: 84px; overflow-y: auto; }
-.aim-home-slack-footer { justify-content: space-between; }
-.aim-home-slack-footer .aim-home-caption { font-size: 11px; }
+.aim-home-slack-author { font-weight:600; font-size:var(--aim-widget-body-size); line-height:20px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-slack-time { flex-shrink:0; color:var(--aim-home-secondary); font-size:var(--aim-widget-meta); line-height:16px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.aim-home-slack-channel { display:block; font-size:var(--aim-widget-meta); line-height:16px; color:var(--aim-home-secondary); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-slack-text { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; font-size:var(--aim-widget-body-size); line-height:20px; margin:0; }
+.aim-home-slack-message { margin:0 0 8px; font-size:var(--aim-widget-meta); line-height:16px; color:var(--text-warning, var(--text-normal)); }
 .aim-home-slack-tile .aim-home-tile-heading h3 { min-width: 0; }
 .aim-home-setup { line-height: 1.6; }
 .aim-home-setup [hidden] { display: none !important; }
@@ -923,31 +942,28 @@
 .aim-home-setup input:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: 2px; }
 
 /* Calendar and Mail share one tile; each view keeps its own mounted content. */
-.aim-home-inbox-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:34px; margin-bottom:8px; border-bottom:1px solid var(--aim-home-border); }
-.aim-home-inbox-tabs { display:flex; align-items:center; gap:16px; }
-.aim-home .aim-home-inbox-tabs button { position:relative; padding:4px 0 10px; border-radius:3px; font-size:14px; font-weight:600; color:var(--aim-home-secondary); }
+.aim-home-inbox-tabs { display:flex; align-items:stretch; height:100%; gap:var(--aim-space-4); }
+.aim-home .aim-home-inbox-tabs button { position:relative; height:100%; padding:0; border-radius:3px; font-size:var(--aim-widget-title); line-height:20px; font-weight:600; color:var(--aim-home-secondary); }
 .aim-home .aim-home-inbox-tabs button[aria-selected="true"] { color:var(--text-normal); }
 .aim-home .aim-home-inbox-tabs button[aria-selected="true"]::after { content:''; position:absolute; height:2px; inset:auto 0 -1px; background:var(--interactive-accent); border-radius:2px; }
 .aim-home-shared-panel { display:flex; flex-direction:column; flex:1 1 0; min-width:0; min-height:0; }
-.aim-home-shared-panel > :not(.aim-home-calendar):not(.aim-home-agenda):not(.aim-home-mail-list) { flex-shrink:0; }
 .aim-home-shared-panel:focus-visible { outline:2px solid var(--interactive-accent); outline-offset:2px; border-radius:4px; }
-.aim-home-calendar-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:4px 8px; min-height:28px; margin-bottom:4px; }
-.aim-home-calendar-toolbar h3 { font-size:13px; font-weight:600; }
+.aim-home-calendar-toolbar { display:flex; align-items:center; justify-content:space-between; flex:0 0 28px; gap:4px; min-width:0; margin-bottom:4px; }
+.aim-home-calendar-toolbar h3 { font-size:var(--aim-widget-body-size); line-height:20px; font-weight:600; white-space:nowrap; }
 .aim-home-month-actions { flex-shrink:0; margin-left:auto; }
 .aim-home-mail-row:focus-visible, .aim-home-mail-account:focus-visible { outline:2px solid var(--interactive-accent); outline-offset:2px; }
-.aim-home-mail-filters { display:flex; align-items:center; gap:4px; margin:2px 0 8px; min-width:0; }
 .aim-home-mail-filters button[aria-pressed="true"] { background:var(--background-modifier-hover); color:var(--text-accent); }
-.aim-home-mail-account { min-width:0; max-width:58%; margin-left:auto; font:inherit; color:var(--text-normal); height:28px; }
+.aim-home-mail-account { min-width:0; flex:1; max-width:58%; margin-left:auto; padding:0 4px; font:inherit; color:var(--text-normal); height:28px; }
 .aim-home-mail-list { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:thin; padding:0 4px 0 0; }
-.aim-home .aim-home-mail-row { display:block; width:100%; height:auto; min-height:72px; padding:10px 3px; margin:0; border:0; border-radius:5px; box-shadow:none; white-space:normal; text-align:left; color:var(--text-normal); background:transparent; cursor:pointer; }
+.aim-home .aim-home-mail-row { display:block; width:100%; height:auto; min-height:0; padding:8px 4px; margin:0; border:0; border-radius:4px; box-shadow:none; white-space:normal; text-align:left; color:var(--text-normal); background:transparent; cursor:pointer; }
 .aim-home .aim-home-mail-row + .aim-home-mail-row { border-top:1px solid var(--aim-home-border); }
 .aim-home .aim-home-mail-row:hover { background:var(--background-modifier-hover); }
 .aim-home-mail-meta { display:flex; gap:8px; justify-content:space-between; align-items:baseline; }
-.aim-home-mail-sender { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.aim-home-mail-time { flex-shrink:0; color:var(--aim-home-secondary); font-size:11px; font-variant-numeric:tabular-nums; }
-.aim-home-mail-subject { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; line-height:1.5; margin-top:3px; overflow-wrap:anywhere; }
+.aim-home-mail-sender { font-weight:600; font-size:var(--aim-widget-body-size); line-height:20px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-mail-time { flex-shrink:0; color:var(--aim-home-secondary); font-size:var(--aim-widget-meta); line-height:16px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.aim-home-mail-subject { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; font-size:var(--aim-widget-body-size); line-height:20px; margin:0; }
 .aim-home-mail-row.is-unread .aim-home-mail-subject { font-weight:600; }
 .aim-home-mail-row.is-unread .aim-home-mail-subject::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--interactive-accent); margin-right:6px; vertical-align:middle; }
-.aim-home-mail-account-label { display:block; font-size:11px; color:var(--aim-home-secondary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.aim-home-mail-message { font-size:12px; line-height:1.4; color:var(--text-error); margin:6px 0; }
+.aim-home-mail-account-label { display:block; font-size:var(--aim-widget-meta); line-height:16px; color:var(--aim-home-secondary); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aim-home-mail-message { font-size:var(--aim-widget-meta); line-height:16px; color:var(--text-error); margin:0 0 8px; }
 .aim-home-mail-message[hidden] { display:none; }

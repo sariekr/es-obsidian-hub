@@ -946,7 +946,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.homePanel = 'calendar';
     entry.panelScroll = {};
     const panelId = `aim-home-panel-${this.homePanelSequence = (this.homePanelSequence || 0) + 1}`;
-    const mainHead = el('div','aim-home-inbox-heading');
+    const mainHead = el('div','aim-home-inbox-heading aim-widget-header');
     const mainTabs = el('div','aim-home-inbox-tabs');
     mainTabs.setAttribute('role','tablist'); mainTabs.setAttribute('aria-label','Calendar and Mail');
     for (const [id,label] of [['calendar','Calendar'],['mail','Mail']]) {
@@ -988,16 +988,17 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.calendarDays.setAttribute('role', 'group');
     entry.calendarDays.setAttribute('aria-label', 'Choose a date to see meetings');
     entry.calendarMode = 'month';
-    const tabs = el('div', 'aim-home-calendar-tabs');
+    const tabs = el('div', 'aim-home-calendar-tabs aim-widget-controls');
     entry.monthTab = button('Month', () => { entry.calendarMode = 'month'; this.updateHome(entry); });
     entry.agendaTab = button('Agenda', () => { entry.calendarMode = 'agenda'; this.updateHome(entry); });
     tabs.append(entry.monthTab, entry.agendaTab);
     entry.agenda = el('div', 'aim-home-agenda');
-    entry.calendarFooter = el('div', 'aim-home-calendar-footer');
     entry.calendarConnect = button('Connect Google Calendar', () => this.openCalendarSetup(), 'aim-home-text-button');
     entry.calendarStatus = el('span','aim-home-caption'); entry.calendarStatus.setAttribute('role','status');
-    entry.calendarFooter.append(entry.calendarConnect, entry.calendarStatus);
-    entry.calendarPanel.append(calendarHead, tabs, entry.calendarDays, entry.agenda, entry.calendarFooter);
+    entry.calendarFooter = homeWidgetFooter(doc, [entry.calendarConnect], entry.calendarStatus, 'aim-home-calendar-footer');
+    const calendarBody = el('div','aim-widget-body aim-widget-calendar-body');
+    calendarBody.append(calendarHead, entry.calendarDays, entry.agenda);
+    entry.calendarPanel.append(tabs, calendarBody, entry.calendarFooter);
 
     entry.scratchBar = el('section','aim-home-scratch-bar');
     entry.scratchBar.setAttribute('aria-label','Scratchpad');
@@ -1016,7 +1017,7 @@ class AIMultipleKanbanExtras extends Plugin {
 
     const youtrack = tile('aim-home-youtrack-tile', 'Your YouTrack issues');
     entry.widgets.youtrack = youtrack;
-    const youtrackHead = el('div', 'aim-home-tile-heading');
+    const youtrackHead = el('div', 'aim-home-tile-heading aim-widget-header');
     const youtrackTitle = el('h3', '', 'YouTrack'); youtrackTitle.prepend(hubIcon(doc,'list-todo'));
     youtrackHead.append(youtrackTitle);
     entry.youtrackCount = el('span', 'aim-home-caption'); youtrackHead.append(entry.youtrackCount);
@@ -1025,21 +1026,23 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.youtrackMessage = el('p', 'aim-home-empty');
     entry.youtrackMessage.setAttribute('role', 'status');
     entry.youtrackMessage.hidden = true;
-    const youtrackFooter = el('div', 'aim-home-tile-footer');
+    entry.youtrackContext = el('div','aim-widget-controls aim-widget-context');
     const source = el('a', 'aim-home-calendar-link', 'Open YouTrack');
     source.href = this.youtrackProfile ? `https://${this.youtrackProfile.host}/issues` : '#';
     source.hidden = !this.youtrackProfile; entry.youtrackSource = source;
     const setup = button('YouTrack settings', () => this.openYouTrackSetup(), 'aim-home-text-button');
     source.target = '_blank'; source.rel = 'noopener noreferrer';
-    youtrackFooter.append(setup, source, entry.youtrackStatus);
-    youtrack.append(youtrackHead, entry.youtrackList, entry.youtrackMessage, youtrackFooter);
+    const youtrackFooter = homeWidgetFooter(doc, [setup,source], entry.youtrackStatus);
+    const youtrackBody = el('div','aim-widget-body');
+    youtrackBody.append(entry.youtrackMessage,entry.youtrackList);
+    youtrack.append(youtrackHead,entry.youtrackContext,youtrackBody,youtrackFooter);
 
     const slack = tile('aim-home-slack-tile', 'Slack inbox'); entry.widgets.slack = slack;
-    const slackHead = el('div', 'aim-home-tile-heading');
-    const slackTitle = el('h3', '', 'Slack · Inbox'); slackTitle.prepend(hubIcon(doc,'messages-square'));
+    const slackHead = el('div', 'aim-home-tile-heading aim-widget-header');
+    const slackTitle = el('h3', '', 'Slack'); slackTitle.prepend(hubIcon(doc,'messages-square'));
     slackHead.append(slackTitle);
     entry.slackCount = el('span', 'aim-home-caption');
-    const slackFilters = el('div', 'aim-home-slack-filters'); slackFilters.setAttribute('aria-label', 'Filter Slack inbox');
+    const slackFilters = el('div', 'aim-home-slack-filters aim-widget-controls'); slackFilters.setAttribute('aria-label', 'Filter Slack inbox');
     entry.slackFilter = 'all'; entry.slackFilters = new Map();
     for (const [key,label] of Object.entries(SLACK_FILTERS)) {
       const control = button(label, () => { entry.slackFilter = key; this.updateSlackWidget(entry); }, 'aim-home-text-button');
@@ -1051,9 +1054,11 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.slackMessage = el('p', 'aim-home-slack-message'); entry.slackMessage.setAttribute('role', 'status');
     entry.slackConnect = button('Connect Slack', () => this.openSlackSetup(), 'aim-home-text-button');
     entry.slackStatus = el('span', 'aim-home-caption');
-    const slackFooter = el('div', 'aim-home-tile-footer aim-home-slack-footer');
-    slackFooter.append(entry.slackConnect, entry.slackStatus);
-    slack.append(slackHead, entry.slackCount, slackFilters, entry.slackList, entry.slackMessage, slackFooter);
+    const slackFooter = homeWidgetFooter(doc,[entry.slackConnect],entry.slackStatus);
+    slackHead.append(entry.slackCount);
+    const slackBody = el('div','aim-widget-body');
+    slackBody.append(entry.slackMessage,entry.slackList);
+    slack.append(slackHead,slackFilters,slackBody,slackFooter);
     this.buildMailWidget(entry,el,button);
     this.updateHomePanel(entry);
   }
@@ -1486,7 +1491,7 @@ class AIMultipleKanbanExtras extends Plugin {
     }
     homeText(entry.calendarConnect, this.calendarEnabled ? 'Calendar settings' : 'Connect Google Calendar');
     const stamp = this.calendarCache?.kind === 'google' ? this.calendarCache.stamps?.get(entry.calendarMonth) : this.calendarCache?.fetchedAt;
-    homeText(entry.calendarStatus, !this.calendarEnabled ? '' : this.calendarBusy ? 'Refreshing…' : this.calendarError ? 'Refresh failed · Auto 10m' :
+    homeText(entry.calendarStatus, !this.calendarEnabled ? 'Not connected' : this.calendarBusy ? 'Refreshing…' : this.calendarError ? 'Refresh failed · Auto 10m' :
       (stamp ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(stamp))} · ` : '') + 'Auto 10m');
     entry.calendarStatus.title = this.calendarError || 'Refreshes every 10 minutes while the Calendar tab is visible. Refresh all widgets also reads inactive tabs.';
     const key = JSON.stringify([entry.selectedDay, this.calendarEnabled, this.calendarCache?.fetchedAt, this.calendarError, this.calendarBusy]);
@@ -1536,8 +1541,6 @@ class AIMultipleKanbanExtras extends Plugin {
         entry.agenda.append(row);
       }
       if (!events.length) entry.agenda.append(homeElement(doc, 'p', 'aim-home-empty', 'No meetings on this date.'));
-      const updated = this.calendarCache.stamps?.get(monthKey) || this.calendarCache.fetchedAt;
-      entry.agenda.append(homeElement(doc, 'p', 'aim-home-caption', `Updated ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(updated))} · device time`));
     } catch (error) { entry.agenda.append(homeElement(doc, 'p', 'aim-home-feed-message', error.message)); }
   }
 
@@ -1548,7 +1551,7 @@ class AIMultipleKanbanExtras extends Plugin {
 
   buildMailWidget(entry,el,button) {
     const widget = entry.mailPanel;
-    const filters = el('div','aim-home-mail-filters'); filters.setAttribute('aria-label','Filter Mail inbox');
+    const filters = el('div','aim-home-mail-filters aim-widget-controls'); filters.setAttribute('aria-label','Filter Mail inbox');
     entry.mailFilter = 'all'; entry.mailAccount = ''; entry.mailFilters = new Map();
     for (const [id,label] of [['all','All'],['unread','Unread']]) {
       const control = button(label,() => { entry.mailFilter = id; this.updateMailWidget(entry); },'aim-home-text-button');
@@ -1561,8 +1564,9 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.mailMessage = el('p','aim-home-mail-message'); entry.mailMessage.setAttribute('role','status');
     entry.mailConnect = button('Connect Mail',() => this.mailEnabled ? this.openMailSettings() : this.refreshMail(true),'aim-home-text-button');
     entry.mailStatus = el('span','aim-home-caption');
-    const footer = el('div','aim-home-tile-footer'); footer.append(entry.mailConnect,entry.mailStatus);
-    widget.append(filters,entry.mailList,entry.mailMessage,footer);
+    const footer = homeWidgetFooter(entry.scope.ownerDocument,[entry.mailConnect],entry.mailStatus);
+    const body = el('div','aim-widget-body'); body.append(entry.mailMessage,entry.mailList);
+    widget.append(filters,body,footer);
   }
 
   updateMailWidget(entry) {
@@ -1581,11 +1585,11 @@ class AIMultipleKanbanExtras extends Plugin {
     }
     entry.mailAccountSelect.disabled = !snapshot;
     entry.mailList.setAttribute('aria-busy',String(this.mailBusy));
-    homeText(entry.mailStatus,this.mailBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 10m` : this.mailEnabled ? 'Auto 10m' : '');
+    homeText(entry.mailStatus,this.mailBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 10m` : this.mailEnabled ? 'Auto 10m' : 'Not connected');
     entry.mailStatus.title = snapshot ? `${snapshot.accounts.length} accounts · Last read ${(snapshot.durationMs / 1000).toFixed(1)}s. Mail stays in memory on this Mac.` : '';
     homeText(entry.mailMessage,this.mailError + (this.mailError && snapshot ? ' Showing the last successful results.' : ''));
     entry.mailMessage.hidden = !this.mailError;
-    const key = JSON.stringify([snapshot?.fetchedAt,this.mailEnabled,!snapshot && this.mailBusy,supported,entry.mailFilter,entry.mailAccount]);
+    const key = JSON.stringify([snapshot?.fetchedAt,this.mailEnabled,!snapshot && this.mailBusy,supported,entry.mailFilter,entry.mailAccount,homeDay(new Date())]);
     if (entry.mailRenderKey === key) return;
     const oldScroll = entry.mailList.scrollTop, sameFilter = entry.mailLastFilter === entry.mailFilter && entry.mailLastAccount === entry.mailAccount;
     entry.mailRenderKey = key; entry.mailLastFilter = entry.mailFilter; entry.mailLastAccount = entry.mailAccount; entry.mailList.replaceChildren();
@@ -1598,15 +1602,18 @@ class AIMultipleKanbanExtras extends Plugin {
     const accounts = new Map(snapshot.accounts.map(a => [a.id,a.name]));
     const rows = snapshot.rows.filter(row => (!entry.mailAccount || row.accountId === entry.mailAccount) && (entry.mailFilter !== 'unread' || !row.read)).slice(0,50);
     if (!rows.length) entry.mailList.append(homeElement(doc,'p','aim-home-empty',snapshot.accounts.length ? 'No messages in this view among the loaded results.' : 'No enabled accounts were found in Apple Mail.'));
+    let dateKey;
     for (const item of rows) {
+      const group = homeDateGroup(item.receivedAt);
+      if (dateKey !== group.key) { entry.mailList.append(homeElement(doc,'h4','aim-widget-group',group.label)); dateKey = group.key; }
       const row = homeElement(doc,'button','aim-home-mail-row' + (item.read ? '' : ' is-unread')); row.type = 'button';
       row.title = 'Open in Apple Mail';
       const meta = homeElement(doc,'span','aim-home-mail-meta');
       meta.append(homeElement(doc,'span','aim-home-mail-sender',item.sender || '(Unknown sender)'));
-      const time = homeElement(doc,'time','aim-home-mail-time',new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.receivedAt)));
-      time.dateTime = new Date(item.receivedAt).toISOString(); meta.append(time);
+      const time = homeElement(doc,'time','aim-home-mail-time',new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(item.receivedAt)));
+      time.dateTime = new Date(item.receivedAt).toISOString(); time.title = new Date(item.receivedAt).toLocaleString('en-GB'); meta.append(time);
       row.append(meta,homeElement(doc,'span','aim-home-mail-subject',item.subject || '(No subject)'),homeElement(doc,'span','aim-home-mail-account-label',accounts.get(item.accountId)));
-      row.setAttribute('aria-label',`${item.read ? '' : 'Unread. '}${item.sender}. ${item.subject || 'No subject'}. ${accounts.get(item.accountId)}. Open in Apple Mail`);
+      row.setAttribute('aria-label',`${item.read ? '' : 'Unread. '}${item.sender}. ${item.subject || 'No subject'}. ${accounts.get(item.accountId)}. ${time.title}. Open in Apple Mail`);
       row.addEventListener('click',() => { void this.openMailMessage(item); }); entry.mailList.append(row);
     }
     entry.mailList.scrollTop = sameFilter ? oldScroll : 0;
@@ -1835,19 +1842,21 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.slackList.setAttribute('aria-busy', String(this.slackBusy));
     homeText(entry.slackConnect, this.slackConnected ? 'Slack settings' : 'Connect Slack');
     homeText(entry.slackCount, this.slackConnected
-      ? `${this.slackAccount.teamName} · @${this.slackAccount.userName}` : 'DMs, mentions and your notes channel');
+      ? this.slackAccount.teamName : 'Inbox');
+    entry.slackCount.title = this.slackConnected ? `${this.slackAccount.teamName} · @${this.slackAccount.userName}` : 'DMs, mentions and your notes channel';
     if ((entry.slackFilter==='channel' && !this.slackSources.channel) || (entry.slackFilter==='group' && !this.slackSources.group)) entry.slackFilter='all';
     for (const [key,control] of entry.slackFilters || []) {
       control.setAttribute('aria-pressed', String(key === entry.slackFilter));
       if (key==='channel' || key==='group') { control.hidden=!this.slackSources[key]; control.title=(key==='channel'?'#':'@')+this.slackSources[key]; }
     }
-    homeText(entry.slackStatus, this.slackBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : this.slackConnected ? 'Auto 5m' : '');
+    homeText(entry.slackStatus, this.slackBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : this.slackConnected ? 'Auto 5m' : 'Not connected');
     entry.slackStatus.title = (Number.isFinite(snapshot?.durationMs) ? `Last refresh took ${(snapshot.durationMs/1000).toFixed(1)}s. ` : '') + 'Refreshes every 5 minutes while Home and Slack are visible. Current messages remain available during refresh.';
     homeText(entry.slackMessage, this.slackError + (this.slackError && snapshot ? ' Showing the last successful results.' : ''));
     entry.slackMessage.hidden = !this.slackError;
-    const key = JSON.stringify([snapshot?.fetchedAt, this.slackConnected, this.slackBusy, this.slackError, entry.slackFilter]);
+    const key = JSON.stringify([snapshot?.fetchedAt, this.slackConnected, !snapshot && this.slackBusy, entry.slackFilter,homeDay(new Date())]);
     if (entry.slackRenderKey === key) return;
-    entry.slackRenderKey = key; entry.slackList.replaceChildren();
+    const oldScroll = entry.slackList.scrollTop, sameFilter = entry.slackLastFilter === entry.slackFilter;
+    entry.slackRenderKey = key; entry.slackLastFilter = entry.slackFilter; entry.slackList.replaceChildren();
     if (!snapshot) {
       entry.slackList.append(homeElement(doc, 'p', 'aim-home-empty', this.slackBusy ? 'Checking your Slack connection…'
         : this.slackConnected ? 'Click Refresh all widgets to load your recent messages.' : 'Connect Slack to see incoming DMs and mentions. Add an optional notes channel or user group in settings.'));
@@ -1855,18 +1864,22 @@ class AIMultipleKanbanExtras extends Plugin {
     }
     const rows = snapshot.rows.filter(row => !entry.slackFilter || entry.slackFilter === 'all' || row.sources?.includes(entry.slackFilter)).slice(0,50);
     if (!rows.length) entry.slackList.append(homeElement(doc, 'p', 'aim-home-empty', 'No messages in this view among the loaded results.'));
+    let dateKey;
     for (const item of rows) {
+      const group = homeDateGroup(item.time);
+      if (dateKey !== group.key) { entry.slackList.append(homeElement(doc,'h4','aim-widget-group',group.label)); dateKey = group.key; }
       const row = homeElement(doc, 'a', 'aim-home-slack-mention');
       row.href = item.url; row.target = '_blank'; row.rel = 'noopener noreferrer';
       const meta = homeElement(doc, 'span', 'aim-home-slack-meta');
       meta.append(homeElement(doc, 'span', 'aim-home-slack-author', item.author));
-      const time = homeElement(doc, 'time', 'aim-home-slack-time', new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.time)));
-      time.dateTime = new Date(item.time).toISOString(); meta.append(time);
+      const time = homeElement(doc, 'time', 'aim-home-slack-time', new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(item.time)));
+      time.dateTime = new Date(item.time).toISOString(); time.title = new Date(item.time).toLocaleString('en-GB'); meta.append(time);
       const sourceLabel = item.sources?.includes('dm') ? 'DM' : item.sources?.includes('group') ? '@' + this.slackSources.group : item.sources?.includes('mention') ? 'Mention' : 'Channel';
-      row.append(meta, homeElement(doc, 'span', 'aim-home-slack-channel', `${sourceLabel} · ${item.channel}`), homeElement(doc, 'span', 'aim-home-slack-text', item.text));
-      row.setAttribute('aria-label', `${item.author} · ${item.channel} · ${time.textContent}. ${item.text}`);
+      row.append(meta, homeElement(doc, 'span', 'aim-home-slack-text', item.text), homeElement(doc, 'span', 'aim-home-slack-channel', `${sourceLabel} · ${item.channel}`));
+      row.setAttribute('aria-label', `${item.author} · ${item.channel} · ${time.title}. ${item.text}`);
       entry.slackList.append(row);
     }
+    entry.slackList.scrollTop = sameFilter ? oldScroll : 0;
   }
 
   openCalendarSetup() {
@@ -2751,6 +2764,10 @@ class AIMultipleKanbanExtras extends Plugin {
 
   updateYouTrackWidget(entry) {
     const issues = this.homeYouTrackIssues();
+    if (entry.youtrackContext) {
+      homeText(entry.youtrackContext,this.youtrackProfile ? `${this.youtrackProfile.project} · Assigned to you` : 'Assigned issues');
+      entry.youtrackContext.title = this.youtrackProfile ? `${this.youtrackProfile.host} · ${this.youtrackProfile.login}` : '';
+    }
     const localStates = issues.map(issue => {
       try { const file = this.findYouTrackLocalNote(issue.id); const cache = file && this.app.metadataCache.getFileCache(file);
         return cache && fileHasKanbanTag(cache) ? cache.frontmatter?.board_column || 'on board' : file ? 'saved' : ''; }
@@ -2760,23 +2777,28 @@ class AIMultipleKanbanExtras extends Plugin {
     if (key === entry.youtrackKey) return;
     entry.youtrackKey = key; entry.youtrackList.replaceChildren();
     homeText(entry.youtrackCount, `${issues.length} open`);
-    for (const [index, issue] of issues.entries()) {
-      const link = homeElement(entry.scope.ownerDocument, 'a', 'aim-home-issue');
-      link.dataset.youtrackId = issue.id;
-      link.draggable = !this.youtrackImports.has(issue.id);
-      link.title = 'Drag to a kanban column, or right-click to add. Click to open YouTrack.';
-      link.addEventListener('dragstart', event => {
-        if (!this.active || this.youtrackImports.has(issue.id) || !event.dataTransfer) { event.preventDefault(); return; }
-        this.youtrackDrag = {id: issue.id, doc: link.ownerDocument};
-        event.dataTransfer.setData('application/x-es-hub-youtrack', issue.id);
-        event.dataTransfer.effectAllowed = 'copy';
-      });
-      link.href = issue.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
-      link.append(homeElement(entry.scope.ownerDocument, 'span', 'aim-home-note-name', issue.title),
-        homeElement(entry.scope.ownerDocument, 'span', 'aim-home-caption', `${issue.id} · ${issue.state || 'Open'}${issue.priority ? ` · ${issue.priority}` : ''}`));
-      const local = this.youtrackImports.has(issue.id) ? 'Importing…' : localStates[index] ? `Local: ${localStates[index]}` : '';
-      if (local) link.append(homeElement(entry.scope.ownerDocument, 'span', 'aim-home-local-state', local));
-      entry.youtrackList.append(link);
+    const groups = new Map();
+    for (const [index,issue] of issues.entries()) { const state = issue.state || 'Open'; if (!groups.has(state)) groups.set(state,[]); groups.get(state).push([index,issue]); }
+    for (const [state,items] of groups) {
+      entry.youtrackList.append(homeElement(entry.scope.ownerDocument,'h4','aim-widget-group',state));
+      for (const [index, issue] of items) {
+        const link = homeElement(entry.scope.ownerDocument, 'a', 'aim-home-issue');
+        link.dataset.youtrackId = issue.id;
+        link.draggable = !this.youtrackImports.has(issue.id);
+        link.title = 'Drag to a kanban column, or right-click to add. Click to open YouTrack.';
+        link.addEventListener('dragstart', event => {
+          if (!this.active || this.youtrackImports.has(issue.id) || !event.dataTransfer) { event.preventDefault(); return; }
+          this.youtrackDrag = {id: issue.id, doc: link.ownerDocument};
+          event.dataTransfer.setData('application/x-es-hub-youtrack', issue.id);
+          event.dataTransfer.effectAllowed = 'copy';
+        });
+        link.href = issue.url; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        link.append(homeElement(entry.scope.ownerDocument, 'span', 'aim-home-note-name', issue.title),
+          homeElement(entry.scope.ownerDocument, 'span', 'aim-home-caption', `${issue.id}${issue.priority ? ` · ${issue.priority}` : ''}`));
+        const local = this.youtrackImports.has(issue.id) ? 'Importing…' : localStates[index] ? `Local: ${localStates[index]}` : '';
+        if (local) link.append(homeElement(entry.scope.ownerDocument, 'span', 'aim-home-local-state', local));
+        entry.youtrackList.append(link);
+      }
     }
     if (!issues.length) entry.youtrackList.append(homeElement(entry.scope.ownerDocument, 'p', 'aim-home-empty',
       this.youtrackSnapshot ? 'No open cards in this snapshot.' : 'Connect your account in YouTrack settings. Your board works without a connection.'));
@@ -2803,8 +2825,8 @@ class AIMultipleKanbanExtras extends Plugin {
     if (entry.youtrackSource) { entry.youtrackSource.hidden = !this.youtrackProfile; entry.youtrackSource.href = this.youtrackProfile ? `https://${this.youtrackProfile.host}/issues` : '#'; }
     entry.youtrackList.setAttribute('aria-busy', String(this.youtrackBusy));
     const stamp = this.youtrackSnapshot?.fetchedAt;
-    homeText(entry.youtrackStatus, this.youtrackBusy ? 'Refreshing…' : !this.youtrackProfile ? 'Not connected' : (stamp ? `Snapshot · ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(stamp))}` : 'Not loaded') + ' · Auto 6h');
-    entry.youtrackStatus.title = 'Reads your open cards every 6 hours while YouTrack is visible, or with Refresh all widgets. Updates only this snapshot; never imports notes or changes issue status.';
+    homeText(entry.youtrackStatus, this.youtrackBusy ? 'Refreshing…' : !this.youtrackProfile ? 'Not connected' : (stamp ? `Updated ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(stamp))}` : 'Not loaded') + ' · Auto 6h');
+    entry.youtrackStatus.title = (stamp ? `Last read ${new Date(stamp).toLocaleString('en-GB')}. ` : '') + 'Reads your open cards every 6 hours while YouTrack is visible, or with Refresh all widgets. Updates only this snapshot; never imports notes or changes issue status.';
   }
 
   async ensureQuickNotesFolder() {
@@ -4831,6 +4853,22 @@ function renderBoardPreviewText(doc, target, text) {
   }
 }
 function homeText(node, text) { if (node.textContent !== text) node.textContent = text; }
+
+// Shared widget anatomy: source-specific content never changes the frame tracks.
+function homeWidgetFooter(doc, actions, status, legacyClass = 'aim-home-tile-footer') {
+  const footer = homeElement(doc,'div',`aim-widget-footer ${legacyClass}`);
+  const controls = homeElement(doc,'div','aim-widget-footer-actions');
+  controls.append(...actions); footer.append(controls,status); return footer;
+}
+
+function homeDateGroup(value, now = new Date()) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return {key:'invalid',label:'Date unavailable'};
+  const key = homeDay(date), yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate()-1);
+  return {key,label:key === homeDay(now) ? 'Today' : key === homeDay(yesterday) ? 'Yesterday'
+    : new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',...(date.getFullYear() !== now.getFullYear() ? {year:'numeric'} : {})}).format(date)};
+}
 
 function homeDay(date) {
   const pad = value => String(value).padStart(2, '0');

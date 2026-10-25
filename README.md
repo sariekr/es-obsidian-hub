@@ -45,6 +45,8 @@ The card filters, Preview, configurable Type icons and shared widget refresh bel
 
 Cards show compact Priority and Type controls. A note with a **Next step** or **Sonraki adım** heading can show a one-line excerpt; notes without that section stay compact. Filters are temporary and do not change the saved Base query or column/WIP totals.
 
+Widgets share aligned headers, filters and two-line footers. Mail and Slack group messages by date; YouTrack groups issues by their actual State. The [design language](docs/DESIGN.md) keeps font roles, spacing and colors consistent.
+
 Type icons keep their text labels. Priority has its own symbol and label; only High and Urgent add a small color accent. Completed cards keep readable controls and a struck-through title. No extra icon plugin is required.
 
 Open `Hub/Learning/Try Add to board.md` and try **Add to board**. Edit or delete the sample cards. Drag cards between columns. Within a column, priority and date determine their order.
@@ -108,6 +110,6 @@ Do not ask me to paste tokens or OAuth JSON into chat.
 
 ## Version and contributions
 
-Source version: **1.4.0**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. The 1.4.0 source adds shared widget refresh and automatic read intervals. Version 1.3.0 added configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
+Source version: **1.4.0**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. The 1.4.0 source adds aligned widget headers/footers, grouped lists, shared refresh and automatic read intervals. Version 1.3.0 added configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
 
 See [verification](docs/VERIFICATION.md), [development workflow and handoff](docs/DEVELOPMENT.md), [icon and color research](docs/UI-RESEARCH.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed. Third-party components keep their own licenses.

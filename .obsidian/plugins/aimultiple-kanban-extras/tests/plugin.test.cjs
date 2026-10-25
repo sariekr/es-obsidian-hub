@@ -9,6 +9,18 @@ const taxonomy = JSON.parse(fs.readFileSync(path.join(root, '../../../Hub/_kanba
 Object.assign(taxonomy,{folder_to_category:{Data:'data',MSc:'msc',Personal:'personal',Other:'other'},view_to_folder:{Data:'Hub/Data',MSc:'Hub/MSc',Benchmark:'Hub/Benchmark'}});
 const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('Inbox date groups use local calendar days across month and DST boundaries',()=>{
+ const {dateGroup}=fixture();assert.equal(typeof dateGroup,'function');
+ const now=new Date(2026,2,9,0,30),yesterday=new Date(2026,2,8,23,30);
+ assert.equal(dateGroup(now,now).label,'Today');
+ assert.equal(dateGroup(yesterday,now).label,'Yesterday');
+ assert.equal(dateGroup(new Date(2026,1,28,23,59),new Date(2026,2,1,0,1)).label,'Yesterday');
+ assert.equal(dateGroup(new Date(2025,11,31),new Date(2026,0,1)).label,'Yesterday');
+ assert.match(dateGroup(new Date(2025,0,3),now).label,/3 Jan 2025/);
+ assert.notEqual(dateGroup(now,now).key,dateGroup(yesterday,now).key);
+ assert.equal(dateGroup('invalid',now).label,'Date unavailable');
+});
+
 
 function refreshClock() {
  const clock={now:Date.now()};
@@ -424,14 +436,15 @@ function fixture(initial=[], saved={}, runtime={}) {
   const obsidian={Plugin,Modal,TFile,Menu:class {},Setting:class {},Notice:class {constructor(s){notices.push(s);}},getAllTags:c=>[...['tags','tag'].flatMap(k=>Array.isArray(c.frontmatter?.[k])?c.frontmatter[k]:String(c.frontmatter?.[k]||'').split(/[,\s]+/)).filter(Boolean).map(t=>'#'+t.replace(/^#/,'')),...(c.tags||[]).map(x=>x.tag)]};
   const context={module:{exports:{}},require:n=>{if(['node:fs/promises','node:fs','node:path','node:os','node:buffer'].includes(n))return require(n);assert.equal(n,'obsidian');return obsidian;},document:doc,Element:Dom,HTMLElement:Dom,MutationObserver:doc.defaultView.MutationObserver,console,setTimeout,clearTimeout,...runtime};
   obsidian.requestUrl=args=>{requests.push(args);return app.requestCalendar(args);}; context.URL=URL; context.URLSearchParams=URLSearchParams;
-  vm.runInNewContext(source+'\nmodule.exports.TestModal = AddCardModal;',context);
+  vm.runInNewContext(source+'\nmodule.exports.TestModal = AddCardModal; module.exports.testDateGroup = typeof homeDateGroup === "function" ? homeDateGroup : null;',context);
   const folders=['Quick Notes','Data','Other','Personal','MSc','Benchmark','Unity','Attachments','_kanban'].map(name=>({name,path:`Hub/${name}`,children:[]}));
   for(const folder of folders)files.set(folder.path,folder);
   files.set('Hub',{name:'Hub',path:'Hub',children:folders});
   for(const [p,fm,inline] of initial)new TFile(p,fm,inline);
   const plugin=new context.module.exports();
+  const dateGroup=context.module.exports.testDateGroup;
   plugin.restoreYouTrack=function(){this.youtrackProfile={host:'tracker.example.com',login:'Alex',project:'DEMO',states:{backlog:'To do','in-progress':'In Progress',done:'Done'},syncEnabled:true};};
-  return {plugin,app,doc,files,caches,notices,TFile,opened,focused,saves,leaves,modals,moves,secrets,requests,storage,Modal:context.module.exports.TestModal,start:async()=>{await plugin.onload();plugin.youtrackProfile={host:"tracker.example.com",login:"Alex",project:"DEMO",states:{backlog:"To do","in-progress":"In Progress",done:"Done"},syncEnabled:true};plugin.slackSources={channel:"team-notes",group:"builders"};await flush();},flush};
+  return {dateGroup,plugin,app,doc,files,caches,notices,TFile,opened,focused,saves,leaves,modals,moves,secrets,requests,storage,Modal:context.module.exports.TestModal,start:async()=>{await plugin.onload();plugin.youtrackProfile={host:"tracker.example.com",login:"Alex",project:"DEMO",states:{backlog:"To do","in-progress":"In Progress",done:"Done"},syncEnabled:true};plugin.slackSources={channel:"team-notes",group:"builders"};await flush();},flush};
 }
 
 test('Type selection moves a renamed Quick note and preserves its content and membership',async()=>{
