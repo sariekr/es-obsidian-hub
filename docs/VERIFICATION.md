@@ -1,5 +1,17 @@
 # Verification record
 
+## 1.2.0 source: 25 October 2026
+
+Compact cards, combined search/Type filters and a click-to-open note preview were selectively ported into the shared checkout. The public fork's configurable accounts, account-bound imports, default-off YouTrack State sync and first-trust recovery remain intact. No additional plugin, theme update or dependency was installed. This is source delivery; no 1.2.0 GitHub release was published as part of it.
+
+- **196 Node tests and 21 Python tests passed.** Four new behavior tests first failed for the missing methods and then passed. They cover next-step extraction, frontmatter/fence/comment exclusion, diacritic-insensitive title/ID search combined with effective Type, shared bounded reads, invalidation, unload and stale/deleted preview targets. Existing public-profile tests also pass.
+- The new actual-runtime `tests/board.preview.py` fixture showed **PASS** in desktop dark, 800px light and 480px dark panels. Checks cover combined filters and no-results feedback, Clear, redraw persistence, single mounts, excerpts after edits, safe preview rendering, Close/Escape focus, Open note in a new tab, other-Base isolation, unload/reload cleanup, no note/property/settings writes and viewport overflow. Screenshots were inspected through native Chrome. These are synthetic browser checks, not live account tests.
+- Native Obsidian **1.11.7** loaded the source in the independent disconnected `.local/demo-vault`. At approximately 1470×800, three widgets, three board columns and the existing **300px** widget height remained. Search reduced six cards to two; combining Work reduced them to one. Preview showed the fictional note without leaving the board. Open note preserved the board in another tab. Escape closed the panel, and Clear restored all six cards. The main board was left open, unfiltered, with Preview closed. SHA-256 readback confirmed all **13 demo Markdown notes unchanged**.
+- **3 distribution tests passed**, including repeatable ZIP builds in a temporary synthetic vault, exact allowlist members, fresh installation and rejection of nonempty/symlink destinations. The pristine checker passed for 70 reviewed files. Nine existing hashes changed deliberately, two source/documentation files were added to the allowlist, and 59 existing hashes stayed identical. The generated calendar bundle was independently byte-compared with the base commit. A bounded scan of added content found no token patterns or private source paths; it is not a comprehensive secret audit.
+- Only `main.js`, `styles.css` and `manifest.json` were copied to the disabled demo plugin, which was then re-enabled through Obsidian. No demo settings file was hand-edited. The generated calendar bundle, vendor plugin, theme and integration adapters were not changed.
+
+No new mobile, other operating system, second Mac, live integration, native light-theme, long-duration polling or measured contrast check is claimed. There was no independent agent review. The README's older demonstration image remains explicitly labeled. Optional icon/color integrations have source research only; see [UI research](UI-RESEARCH.md).
+
 ## 1.1.0: 19 October 2026
 
 Mail and the shared Calendar / Mail tile were selectively ported from the maintainer's 0.27.0 runtime. The public fork's configurable accounts, account-bound YouTrack imports, default-off State sync, optional Slack sources and first-trust recovery remain intact. No personal notes, account snapshots or settings were copied.

@@ -26,16 +26,22 @@ If an "Unknown view type" screen lingers after first trust, ES Hub reopens that 
 
 ## Try it in two minutes
 
+The new card filters and Preview below are available in the **1.2.0 source checkout**. The current release ZIP remains **1.1.0**.
+
 | What you want to do | Where to click |
 | --- | --- |
 | Save a quick thought | **Scratchpad → Save** creates a new ordinary Quick Note. Typing or closing a window alone does not create a note. |
 | Create a card directly | **Add note** in the Backlog header. A new writing tab opens and the board stays open. |
 | Turn an existing note into a card | Open a note → **Add to board** above its title. Its content and location stay intact. |
 | Remove a card from the board | **Remove from board** keeps the note. |
+| Find a card | **Search cards** and **All types** combine within the displayed board. **Clear** resets both. |
+| Read a card without leaving the board | **Preview** opens a read-only panel. **Open note** opens the full note in a separate tab. |
 | Change status, priority, type or tags | Use **Status / Priority / Type / Tags** above the note, or right-click a card. |
 | Wrap a note in its own folder | **Make a folder** creates a containing folder and moves the note into it. |
 | Delete a note | The separate **Delete note** action uses Obsidian's confirmation and trash flow. |
 | Resize or hide widgets | Drag their shared separator, choose widgets in **Customize**, or use **Hide widgets**. Scratchpad stays visible. |
+
+Cards show compact Priority and Type controls. A note with a **Next step** or **Sonraki adım** heading can show a one-line excerpt; notes without that section stay compact. Filters are temporary and do not change the saved Base query or column/WIP totals.
 
 Open `Hub/Learning/Try Add to board.md` and try **Add to board**. Edit or delete the sample cards. Drag cards between columns. Within a column, priority and date determine their order.
 
@@ -96,6 +102,6 @@ Do not ask me to paste tokens or OAuth JSON into chat.
 
 ## Version and contributions
 
-Current starter release: **1.1.0**. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
+Source version: **1.2.0**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. The 1.2.0 source adds compact cards, combined board filters and click-to-open note previews. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
 
-See [verification](docs/VERIFICATION.md), [development workflow](docs/DEVELOPMENT.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed. Third-party components keep their own licenses.
+See [verification](docs/VERIFICATION.md), [development workflow and handoff](docs/DEVELOPMENT.md), [icon and color research](docs/UI-RESEARCH.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed. Third-party components keep their own licenses.

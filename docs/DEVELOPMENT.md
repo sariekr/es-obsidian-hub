@@ -38,3 +38,17 @@ Use ordinary independent folders, not symlinks or folders automatically synchron
 Changes in either direction are deliberate. There is no automatic synchronization, deployment, background watcher or shared plugin directory between these locations. A change to the shared repository does not update the personal hub.
 
 Temporary browser previews and old QA folders are disposable output, not the canonical source. Keep the Git checkout and separate demo vault as the ongoing workspaces. Build releases only from `distribution.json` in the checkout, never from a demo or everyday vault.
+
+## Current handoff — 25 October 2026
+
+Source **1.2.0** is prepared on `feat/board-ui-preview`, based on the published 1.1.0 source. The selected three UI changes are now in this checkout and were tested in its independent `.local/demo-vault`. The personal experiment remains a separate installation; there is no synchronization or deployment link between them.
+
+Implemented: compact Priority/Type controls and optional next-step excerpts; temporary title/path/issue-ID search combined with live Type filtering; a bounded read-only Preview panel with Open note. Public account defaults and State-sync opt-in are preserved. [Verification](VERIFICATION.md) owns the evidence. [UI research](UI-RESEARCH.md) records recommendations and version checks for icons/colors; those plugins were researched, not installed.
+
+GitHub delivery of this branch and its PR is requested. This handoff is saved before that delivery; verify the remote branch, PR and checks for its actual head before resuming. No merge, tag or public release is included in the delivery request. The latest published download remains 1.1.0.
+
+## Next steps
+
+Review the PR for `feat/board-ui-preview` and its current-head checks before merging. Then decide whether to prototype theme color controls and built-in Lucide icons in the disconnected demo. Additional plugin installation and a public 1.2.0 release remain separate decisions.
+
+Continue in this development checkout, reading AGENTS.md, this section, VERIFICATION.md and UI-RESEARCH.md. Use the existing demo for native checks. Do not re-copy the personal plugin wholesale or overwrite any personal notes/settings. Stable passing checks above need no repeat unless the relevant code changes.

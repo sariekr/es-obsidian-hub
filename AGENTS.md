@@ -2,6 +2,8 @@
 
 This repository is a redistributable **starter Obsidian vault for macOS**, not the maintainer's personal vault. Read README.md, docs/CONNECTIONS.md and docs/VERIFICATION.md first. The primary user is new to Obsidian. Keep the UI in English and explain setup in the user's language.
 
+Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.2.0 adds compact board cards, temporary search/Type filters and a read-only Preview panel. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) records optional icon/color candidates; none are bundled or enabled by this change.
+
 ## Install for a new user
 
 1. Identify an explicit new destination, usually `~/Documents/ES Obsidian Hub`. Never overlay an existing vault, replace its `.obsidian`, or reset a user's notes. If a destination is already populated, choose a new empty folder with the user.
@@ -44,6 +46,8 @@ This repository is a redistributable **starter Obsidian vault for macOS**, not t
 | `scripts/` | Read-only checker, fresh-destination installer and reproducible release builder |
 
 Any Markdown note under Hub can join the board without moving. Removing membership preserves body and location. Explicit Type changes may move the note or wrapping folder; reject collisions and stale targets. Native deletion must target the current Markdown file, never its parent. Keep per-file concurrency guards and rollback reporting.
+
+Board filters affect only currently rendered cards in the managed main Base. Preserve the saved Base query, column totals, WIP totals and vendor order; filters never write settings or notes. Priority/Type chip actions reuse the note toolbar guards. Preview must remain a bounded read-only text renderer with no embeds, executable HTML or remote images. Keep invalidation, stale-read checks, owner-document positioning and cleanup across redraw/leaf close/unload.
 
 Keep three columns (`backlog`, `in-progress`, `done`), live Hub Type discovery and existing `processFrontMatter` writes. Rendering must not write default properties, move notes or alter settings. Do not hand-edit `data.json` while Obsidian is running. Settings changes use serialized `loadData`/`saveData`, preserving unrelated fields. Do not alter theme or vendor files to fix an Extras selector.
 
