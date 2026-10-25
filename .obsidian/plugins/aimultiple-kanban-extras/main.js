@@ -1156,7 +1156,9 @@ class AIMultipleKanbanExtras extends Plugin {
       for (let n = 1; n <= days; n++) {
         const day = `${entry.calendarMonth}-${String(n).padStart(2, '0')}`;
         const node = homeElement(doc, 'button', 'aim-home-day');
-        node.append(homeElement(doc, 'span', 'aim-home-day-number', String(n)));
+        const markers = homeElement(doc, 'span', 'aim-home-day-markers');
+        markers.setAttribute('aria-hidden', 'true');
+        node.append(homeElement(doc, 'span', 'aim-home-day-number', String(n)), markers);
         node.type = 'button'; node.dataset.day = day;
         node.dataset.dateLabel = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full' }).format(homeDate(day));
         node.setAttribute('aria-label', node.dataset.dateLabel);

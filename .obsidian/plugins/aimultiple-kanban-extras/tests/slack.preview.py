@@ -255,8 +255,8 @@ checks=r'''
   r.setHomePanel(finalHome,'calendar');checkFrame('Calendar');
   finalHome.calendarMode='agenda';r.updateHome(finalHome);checkFrame('Agenda');
   finalHome.calendarMode='month';r.updateHome(finalHome);
-  const beforeHeight=finalHome.home.style.getPropertyValue('--aim-home-widget-height');
-  finalHome.home.style.setProperty('--aim-home-widget-height','300px');
+  const beforeHeight=r.homeWidgetHeight;
+  r.homeWidgetHeight=300;
   finalHome.calendarMonth='2026-08';r.updateHome(finalHome);checkFrame('six-week minimum');
   r.mailError=r.slackError=r.youtrackRefreshError='Synthetic long error. '.repeat(16);
   r.refreshHomes();checkFrame('long errors');r.setHomePanel(finalHome,'mail');checkFrame('Mail error');
@@ -268,9 +268,43 @@ checks=r'''
   for(const [token,value] of [['--font-ui-small','16px'],['--font-ui-medium','18px'],['--font-ui-smaller','14px']])finalHome.home.style.setProperty(token,value);
   checkFrame('larger fonts');
   for(const token of ['--font-ui-small','--font-ui-medium','--font-ui-smaller'])finalHome.home.style.removeProperty(token);
-  finalHome.home.style.setProperty('--aim-home-widget-height',beforeHeight);
+  r.homeWidgetHeight=beforeHeight;r.applyHomeWidgetHeight(finalHome);
   verify(f.files.size===fileCount&&JSON.stringify(f.saved)===settingsBefore,'grouping and geometry checks never write notes/settings');
-  status.textContent='PASS · Aligned frames, grouped lists, refresh and tabs · Synthetic data';document.title='PASS · Slack Home fixture';
+  // Meeting markers must occupy their own line, including a selected day at minimum height.
+  const markerMonths=['2026-10','2027-02','2026-08'];
+  const markerEvents=month=>[2,3,4,26].flatMap(day=>Array.from({length:day===2?1:day===3?2:day===4?4:3},(_,i)=>({
+   uid:`fixture-${month}-${day}-${i}`,summary:'Fictional meeting',
+   start:+new Date(`${month}-${String(day).padStart(2,'0')}T10:00:00`),end:+new Date(`${month}-${String(day).padStart(2,'0')}T11:00:00`)
+  })));
+  r.calendarEnabled=true;r.calendarError='';r.calendarBusy=false;
+  r.calendarCache={months:new Map(markerMonths.map(month=>[month,markerEvents(month)])),stamps:new Map(markerMonths.map(month=>[month,Date.now()])),fetchedAt:Date.now()};
+  r.setHomePanel(finalHome,'calendar');
+  const measuredCalendarHeights=new Set();
+  for(const height of [401,300])for(const month of markerMonths){
+   r.homeWidgetHeight=height;
+   finalHome.calendarMode='month';finalHome.calendarMonth=month;finalHome.selectedDay=month+'-04';r.updateHome(finalHome);
+   const measuredHeight=finalHome.widgets.calendar.getBoundingClientRect().height;
+   verify(Math.abs(measuredHeight-Math.max(300,Math.min(height,r.homeWidgetBounds(finalHome).max)))<=1,'bounded calendar height is rendered');measuredCalendarHeights.add(Math.round(measuredHeight));
+   checkFrame('Calendar markers '+height+' '+month);
+   for(const day of finalHome.calendarDays.querySelectorAll('button')){
+    const box=day.getBoundingClientRect(),number=day.querySelector('.aim-home-day-number').getBoundingClientRect();
+    verify(box.bottom-number.bottom>=8,'meeting markers need clear space below date badge at '+height+' '+month);
+    const markers=day.querySelector('.aim-home-day-markers');verify(markers,'dedicated marker line');
+    const marks=markers.getBoundingClientRect();
+    verify(marks.top-number.bottom>=4-0.1,'date and markers separated');
+    verify(marks.bottom<=box.bottom&&marks.left>=box.left&&marks.right<=box.right,'markers stay inside their day');
+    verify(Math.abs((marks.left+marks.right)-(box.left+box.right))<=1,'marker line centered');
+    verify(markers.getAttribute('aria-hidden')==='true','marker shape does not repeat accessible date');
+   }
+   const buttons=[...finalHome.calendarDays.querySelectorAll('button')];
+   verify(buttons.slice(0,4).map(n=>n.dataset.meetings).join(',')==='0,1,2,3','zero/one/two/capped meeting indicators');
+   verify(buttons[3].getAttribute('aria-label').includes('4 meetings'),'full count remains accessible');
+   if(height===300)verify(finalHome.calendarDays.scrollHeight>finalHome.calendarDays.clientHeight,'short calendar scrolls without shrinking dates');
+  }
+  r.homeWidgetHeight=401;finalHome.calendarMonth='2026-10';finalHome.selectedDay='2026-10-26';r.updateHome(finalHome);
+  finalHome.calendarDays.querySelector('[data-day="2026-10-04"]').click();verify(finalHome.calendarMode==='agenda'&&finalHome.selectedDay==='2026-10-04','date still opens its agenda');
+  finalHome.calendarMode='month';finalHome.selectedDay='2026-10-26';r.updateHome(finalHome);
+  status.textContent='PASS · Calendar marker spacing ('+[...measuredCalendarHeights].join('/')+'px), aligned frames and interactions · Synthetic data';document.title='PASS · Slack Home fixture';
  } catch(error){status.textContent='FAIL · '+error.message;document.title='FAIL · Slack Home fixture';}
 })();
 '''.replace('ARGS',json.dumps(args).replace('</','<\\/'))

@@ -1,5 +1,16 @@
 # Verification record
 
+## 1.4.1 Calendar marker fix: 26 October 2026
+
+A connected month exposed overlapping date badges and meeting dots after the compact-day adjustment. The actual-runtime regression first failed because the badge left insufficient space below it. The fix gives each day separate 24px date / 4px gap / 4px marker tracks with a 36px minimum cell. Empty days reserve the same tracks. Counts and accessible labels retain their existing logic; only presentation changes.
+
+- **209 Node + 21 Python PASS.** Calendar count, exclusive-midnight, unloaded/empty-month and disconnect tests remain unchanged and green. The generated Calendar bundle is unchanged.
+- Actual-runtime browser regression passed desktop dark at measured **362px and 300px**, and an **800px light** panel at measured **300px**. Requested heights are bounded by the runtime's available viewport space; the fixture now asserts the rendered height instead of assuming a CSS assignment survived `updateHome`. It covers 4/5/6-week months, zero/one/two/capped markers, selected dates, at least 4px badge-to-marker separation, centered/contained marker lines, full accessible counts, short-calendar scrolling, unchanged frame alignment and date-to-Agenda interaction. The personal adapter's independent synthetic fixture additionally passed 480px dark at 300px; no personal data was copied.
+- The previous 1.4.0 fixture assigned the CSS height before a runtime update that could reset it. Its minimum-height browser claim was too broad; the new regression uses the real in-memory height preference and verifies the resulting geometry. Native 300px observations from that pass remain separate evidence.
+- Computer use inspected the fixed dark/light browser renders and independent disconnected **Obsidian 1.11.7**, 1470×800 dark demo at **300px**. Scrolling reaches the last week while the footer stays aligned. Native demo has no meeting data; connected markers are tested with fictional browser events. Demo files changed only while its window was closed; only main.js/styles.css/manifest.json were copied. No demo notes, settings or connections were changed.
+
+No new native light/narrow, mobile, second Mac, live account setup or remote-write verification is claimed. No optional plugin, theme change or app upgrade is required. The pristine checker, three distribution tests and release build passed with the same reviewed allowlist. The delivery receipt identifies the exact PR head and CI result.
+
 ## 1.4.0 widget design follow-up: 26 October 2026
 
 The approved grouped-list direction is now implemented with the symmetry contract in [DESIGN.md](DESIGN.md). This extends the existing PR, not the published 1.1.0 download.

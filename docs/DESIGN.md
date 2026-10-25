@@ -25,7 +25,7 @@ Footer actions can scroll horizontally; the status stays on a separate line.
 Long status text truncates with its complete meaning available in a tooltip.
 
 The shared resizer still controls height, including the existing 300 px minimum.
-A six-week month can scroll inside that minimum height. Narrow panels keep the
+Calendar days reserve a 24px date badge, a 4px gap and a dedicated 4px marker line inside a minimum 36px cell. Center the entire marker group below the badge; never anchor dots over its background. Short calendars scroll internally, including a five-week month at the 300px minimum. The exact meeting count remains in the date tooltip and accessible label. Narrow panels keep the
 three sources in one horizontally scrollable row; they do not squeeze into
 unreadable columns. Mail, Slack and YouTrack error banners use at most 40% of the body, with their
 own scrolling. Calendar errors remain in its scrolling Agenda. Neither changes

@@ -26,7 +26,7 @@ If an "Unknown view type" screen lingers after first trust, ES Hub reopens that 
 
 ## Try it in two minutes
 
-The card filters, Preview, configurable Type icons and shared widget refresh below are available in the **1.4.0 source checkout**. The current release ZIP remains **1.1.0**.
+The card filters, Preview, configurable Type icons and shared widget refresh below are available in the **1.4.1 source checkout**. The current release ZIP remains **1.1.0**.
 
 | What you want to do | Where to click |
 | --- | --- |
@@ -110,6 +110,6 @@ Do not ask me to paste tokens or OAuth JSON into chat.
 
 ## Version and contributions
 
-Source version: **1.4.0**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. The 1.4.0 source adds aligned widget headers/footers, grouped lists, shared refresh and automatic read intervals. Version 1.3.0 added configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
+Source version: **1.4.1**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. Version 1.4.1 separates Calendar date badges and meeting markers to prevent overlap. The 1.4.0 source adds aligned widget headers/footers, grouped lists, shared refresh and automatic read intervals. Version 1.3.0 added configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
 
 See [verification](docs/VERIFICATION.md), [development workflow and handoff](docs/DEVELOPMENT.md), [icon and color research](docs/UI-RESEARCH.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed. Third-party components keep their own licenses.

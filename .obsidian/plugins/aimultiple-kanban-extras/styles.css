@@ -678,7 +678,7 @@
 .aim-home-calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-template-rows: 14px repeat(var(--aim-calendar-weeks, 5), minmax(18px, 1fr));
+  grid-template-rows: 14px repeat(var(--aim-calendar-weeks, 5), minmax(36px, 1fr));
   align-items: stretch;
   gap: 2px;
   flex: 1;
@@ -691,11 +691,13 @@
 .aim-home-weekday { text-align: center; font-size: 11px; line-height:14px; color: var(--aim-home-secondary); padding:0; }
 .aim-home .aim-home-day {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 18px;
-  padding: 0 2px;
+  display: grid;
+  grid-template-rows: 24px 4px;
+  gap: 4px;
+  align-content: center;
+  justify-items: center;
+  min-height: 36px;
+  padding: 2px;
   font-size: 13px;
   line-height:18px;
 }
@@ -704,9 +706,7 @@
   align-items: center;
   justify-content: center;
   width: 30px;
-  height: 100%;
-  min-height: 16px;
-  max-height: 26px;
+  height: 24px;
   border: 1px solid transparent;
   border-radius: 8px;
 }
@@ -718,19 +718,20 @@
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
-.aim-home .aim-home-day[data-meetings]:not([data-meetings="0"])::after {
+.aim-home-day-markers { position:relative; width:16px; height:4px; }
+.aim-home .aim-home-day[data-meetings]:not([data-meetings="0"]) .aim-home-day-markers::after {
   content: '';
   position: absolute;
-  bottom: 3px;
+  top: 0;
   left: calc(50% - 2px);
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   color: var(--interactive-accent);
   background: currentColor;
 }
-.aim-home .aim-home-day[data-meetings="2"]::after { left: calc(50% - 5px); box-shadow: 6px 0 currentColor; }
-.aim-home .aim-home-day[data-meetings="3"]::after { left: calc(50% - 8px); box-shadow: 6px 0 currentColor, 12px 0 currentColor; }
+.aim-home .aim-home-day[data-meetings="2"] .aim-home-day-markers::after { left: calc(50% - 5px); box-shadow: 6px 0 currentColor; }
+.aim-home .aim-home-day[data-meetings="3"] .aim-home-day-markers::after { left: calc(50% - 8px); box-shadow: 6px 0 currentColor, 12px 0 currentColor; }
 .aim-home .aim-home-daily-button {
   margin-top: 6px;
   min-height: 28px;
