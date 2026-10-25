@@ -39,7 +39,7 @@ Changes in either direction are deliberate. There is no automatic synchronizatio
 
 Temporary browser previews and old QA folders are disposable output, not the canonical source. Keep the Git checkout and separate demo vault as the ongoing workspaces. Build releases only from `distribution.json` in the checkout, never from a demo or everyday vault.
 
-## Current handoff — 25 October 2026
+## Current handoff — 26 October 2026
 
 Source **1.4.0** is prepared on `feat/widget-refresh-lists`, based on main at `e4ee44e9badb6832c017b3cbf5810cbc3654eda3`. [PR #2](https://github.com/sariekr/es-obsidian-hub/pull/2) was merged at the user's explicit request; its icon/color source is now on main. The checkout was clean when this port began. The latest public download remains [v1.1.0](https://github.com/sariekr/es-obsidian-hub/releases/tag/v1.1.0).
 
@@ -51,11 +51,11 @@ The [interactive HTML proposal](prototypes/widget-lists.html) shows Notebook Nav
 
 [Verification](VERIFICATION.md) owns the evidence: 208 Node / 21 Python tests; actual-runtime browser DOM checks in dark/light/narrow layouts; native disconnected Obsidian 1.11.7 interaction checks. Fake clocks cover intervals; no full six-hour real-time wait is claimed. All 23 demo Markdown files remained unchanged. Native demo remains Calendar/Month, widgets visible at 300px, Customize closed and board unfiltered.
 
-GitHub delivery is pending for this branch. Create one PR against main after the package checks. A new PR merge and a public release are separate decisions; the earlier PR #2 merge instruction is already fulfilled.
+Delivery is [PR #3](https://github.com/sariekr/es-obsidian-hub/pull/3), open from `feat/widget-refresh-lists` against `main`; implementation commit `1eca24a`. This follow-up records the verified PR receipt without embedding its own hash. Check the PR’s exact latest-head CI before merging. A new PR merge and a public release are separate decisions; the earlier PR #2 merge instruction is already fulfilled.
 
 ## Next steps
 
-Review the widget refresh PR and the standalone HTML proposal. Choose whether to implement Mail/Slack date groups first; the list redesign is not yet in the runtime. Merge/release remains a separate decision.
+Review [PR #3](https://github.com/sariekr/es-obsidian-hub/pull/3) and the standalone HTML proposal. Choose whether to implement Mail/Slack date groups first; the list redesign is not yet in the runtime. Merge/release remains a separate decision.
 
 Continue in this development checkout after reading AGENTS.md, this section, VERIFICATION.md and UI-RESEARCH.md. Use `docs/prototypes/widget-lists.html` directly in a browser; no server or install is required. The smallest proposed follow-up is date grouping and shared row spacing with existing filtering, limits, safe rendering, source-open actions and scroll retention preserved. Evaluate YouTrack State grouping and Calendar Agenda alignment afterward.
 
