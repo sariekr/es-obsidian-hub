@@ -2,6 +2,8 @@
 
 The board works without any account connection. This package never uses the maintainer's accounts. Enter tokens and OAuth files in Obsidian's local setup dialogs. Keep them out of notes, GitHub and chat.
 
+Source 1.4.0 uses **Refresh all widgets** beside Customize; the published 1.1.0 ZIP still has the older separate controls and intervals. Automatic reads run only while their Home/widget is visible; Calendar and Mail additionally require their active tab. Manual refresh also includes connected hidden modules and inactive tabs. It never connects a new account, imports issues or changes remote State.
+
 ## Google Calendar
 
 This version reads your Google account's **primary** calendar. It does not offer a calendar selector or create/change events. Agenda opens available Google Meet and Zoom links.
@@ -16,7 +18,7 @@ This version reads your Google account's **primary** calendar. It does not offer
 6. Grant read-only access in your browser. Return to Obsidian and wait for the setup dialog to close itself. The first month must load successfully before the connection is saved.
 7. Check **Agenda**, then reopen Obsidian to verify that the saved connection works.
 
-The requested scope is `calendar.events.owned.readonly`. Access tokens and events stay in memory. Client details and refresh tokens are stored in Obsidian Keychain, the app's local secret storage. A visible Calendar refreshes roughly every five minutes. Google's [Desktop OAuth setup guide](https://developers.google.com/workspace/calendar/api/quickstart/python) explains client creation. You do not need its Python sample or pip packages for this plugin.
+The requested scope is `calendar.events.owned.readonly`. Access tokens and events stay in memory. Client details and refresh tokens are stored in Obsidian Keychain, the app's local secret storage. A visible Calendar tab refreshes roughly every ten minutes. Google's [Desktop OAuth setup guide](https://developers.google.com/workspace/calendar/api/quickstart/python) explains client creation. You do not need its Python sample or pip packages for this plugin.
 
 Google may limit refresh tokens for External apps in testing. If access later expires, sign in again and check your Google project's publishing/organization policy. See [Google's OAuth guide](https://developers.google.com/identity/protocols/oauth2).
 
@@ -31,7 +33,7 @@ If Google Calendar provides **Settings for my calendars → Integrate calendar �
 1. Set up and enable your accounts in Apple Mail on this Mac. Let Mail finish syncing.
 2. Select the **Mail** tab beside Calendar, then **Connect Mail**.
 3. If macOS asks, allow **Obsidian → Mail** Automation access. No password or token is entered in Hub.
-4. Use **All / Unread** and the account selector to filter the loaded messages. **Refresh** reads again. Automatic reads run about five minutes after the previous read finishes while the Mail tab is visible.
+4. Use **All / Unread** and the account selector to filter the loaded messages. **Refresh all widgets** reads again. Automatic reads run about ten minutes after the previous read finishes while the Mail tab is visible.
 
 The reader samples the first 50 messages returned by Apple Mail from each enabled account's inbox, then sorts the combined sample by received time. It does not guarantee the globally newest 50 messages. Each filtered view displays at most 50 rows. Unread filters this sample. Its count can differ from the total in Apple Mail. Archives, sent mail and other folders are excluded.
 
@@ -60,7 +62,7 @@ Create a token under your YouTrack profile's **Account Security → Tokens / New
 3. Enter **Your login** and **Project key**.
 4. Paste your **Permanent token** in the local masked field.
 5. Leave **Board status sync** off for the initial setup, then choose **Connect**.
-6. The dialog closes after identity and list validation. Use **Refresh** to load unresolved issues assigned to you. The list does not poll the network automatically.
+6. The dialog closes after identity and list validation. Use **Refresh all widgets** to load unresolved issues assigned to you. While the YouTrack widget is visible, its read-only snapshot refreshes about every six hours. A fresh saved snapshot defers the startup read; a failed read keeps the previous snapshot and waits six hours before an automatic retry in that running session. Manual refresh can retry sooner. Hidden views and device sleep defer automatic reads; this is not a background note mirror.
 
 This adapter expects MCP issue responses with scalar **Assignee, State and Priority** fields. State names can differ and are configurable. Multiple assignees or custom field schemas may require adapter changes. [AGENTS.md](../AGENTS.md) explains the boundaries. Logins support letters, digits and `_ . @ + -`. Project keys use uppercase letters, digits and underscores, starting with a letter. An empty list alone does not prove the project is empty: also check the key and issue visibility.
 

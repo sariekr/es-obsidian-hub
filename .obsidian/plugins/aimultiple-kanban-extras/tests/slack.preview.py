@@ -61,6 +61,11 @@ checks=r'''
   };
   const notes=f.files.size;
   verify(document.querySelectorAll('.aim-home-tile').length===3,'three widget modules');
+  const initial=[...p.toolbars.values()].find(e=>e.home?.isConnected);
+  verify(initial.widgetsRefresh.closest('.aim-home-heading-actions'),'one refresh in header');
+  verify(initial.homeToggle.closest('.aim-home-config'),'Hide widgets moved into Customize');
+  verify(!document.querySelector('.aim-home-grid button[aria-label^="Refresh"]'),'no per-widget refresh buttons');
+  verify(![...document.querySelectorAll('.aim-home-grid button')].some(x=>x.textContent==='Refresh'),'no unlabeled per-widget refresh');
   verify(!document.querySelector('.aim-home-recent-strip')&&!document.querySelector('.aim-home-scratchpad-tile'),'Recent and Scratchpad tile removed');
   verify(document.querySelector('.aim-home-heading .aim-home-scratch-bar textarea'),'Scratchpad in header');
   verify(document.querySelectorAll('.obk-column').length===3,'three kanban columns');
@@ -90,7 +95,7 @@ checks=r'''
   verify(!document.querySelector('.aim-home-slack-list script'),'render escaped text safely');
   verify(f.files.size===notes && Object.keys(f.saved).length===0,'no note or settings writes');
   const snapshot=p.slackSnapshot;f.failSlack=true;
-  document.querySelector('[aria-label="Refresh Slack inbox"]').click();await settle();
+  [...p.toolbars.values()].find(e=>e.home?.isConnected).widgetsRefresh.click();await settle();
   verify(p.slackSnapshot===snapshot && !document.querySelector('.aim-home-slack-message').hidden,'retain data and show error');f.failSlack=false;
   p.openSlackSetup();f.pauseSlack=true;f.modal.input.value=token;
   [...f.modal.contentEl.querySelectorAll('button')].find(x=>x.textContent==='Replace connection').click();await settle();
@@ -132,7 +137,7 @@ checks=r'''
   verify(f.plugin.quickDraft.lastSaved===savedPath,'latest saved note survives reload');
   f.plugin.editQuickDraft('');await f.plugin.setHomeCollapsed(false);await f.plugin.refreshSlack();await settle();
   // Actual Calendar/Mail tabs, using only synthetic message metadata.
-  const w=f.plugin;w.mailSupported=()=>true;
+  const w=f.plugin;w.mailSupported=()=>true;w.refreshHomes();
   const mailData={schema:1,accounts:Array.from({length:7},(_,i)=>({id:'account-'+i,name:['Work','Personal','University','Research','Projects','Alumni','Family'][i],limited:true})),
     rows:Array.from({length:84},(_,i)=>({id:i+1,accountId:'account-'+(i%7),mailbox:'INBOX',messageId:'demo-'+i+'@example.test',
       subject:i===0?'<script>Literal subject</script>':['Review notes for tomorrow’s meeting','Your weekly reading list is ready','Updated schedule for the autumn semester'][i%3],
@@ -159,12 +164,12 @@ checks=r'''
   home.mailList.querySelector('button').click();await settle();verify(mailOpens===1,'explicit row opens exact message');
   home.mailFilters.get('all').click();home.mailAccountSelect.value='';home.mailAccountSelect.dispatchEvent(new Event('change'));
   const good=w.mailSnapshot;w.fetchMailSnapshot=async()=>{throw Error('private raw failure');};
-  home.mailRefresh.click();await settle();verify(w.mailSnapshot===good&&!home.mailMessage.hidden&&!home.mailMessage.textContent.includes('private raw'),'failed refresh keeps list and safe error');
+  home.widgetsRefresh.click();await settle();verify(w.mailSnapshot===good&&!home.mailMessage.hidden&&!home.mailMessage.textContent.includes('private raw'),'failed refresh keeps list and safe error');
   w.fetchMailSnapshot=async()=>structuredClone(mailData);await w.refreshMail();await settle();
   home.mailList.scrollTop=80;const savedScroll=home.mailList.scrollTop;
   home.mailFilters.get('unread').click();const selectedFilter=home.mailFilter;
   home.calendarMainTab.click();await settle();
-  verify(!home.calendarPanel.hidden&&home.mailPanel.hidden&&home.mailRefresh.hidden,'Calendar restores its own content and controls');
+  verify(!home.calendarPanel.hidden&&home.mailPanel.hidden,'Calendar restores its own content and controls');
   verify(home.selectedDay===selectedDay&&home.calendarMonth===month&&home.calendarMode===mode,'Calendar view survives Mail');
   home.calendarMainTab.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
   verify(home.homePanel==='mail'&&document.activeElement===home.mailMainTab,'arrow key switches and focuses Mail');
@@ -185,11 +190,30 @@ checks=r'''
   await r.refreshMail();await settle();
   await r.setHomeCollapsed(true);await settle();verify(document.querySelector('.aim-home-grid').hidden,'Hide widgets hides grouped tile');
   await r.setHomeCollapsed(false);await settle();
+  const finalHome=[...r.toolbars.values()].find(e=>e.home?.isConnected);
+  const methods=['refreshCalendar','refreshMail','refreshYouTrack','refreshSlack'],originalMethods=methods.map(name=>r[name]);
+  const previousCalendar=r.calendarEnabled,previousSlack=r.slackConnected,previousYouTrack=r.youtrackProfile;
+  r.calendarEnabled=true;r.slackConnected=true;r.youtrackProfile={host:'tracker.example.com',project:'DEMO',login:'Alex'};finalHome.youtrackKey=null;const completed={},refreshCalls=[];
+  for(const method of methods)r[method]=()=>{refreshCalls.push(method);return new Promise(resolve=>completed[method]=resolve);};
+  const fileCount=f.files.size,settingsBefore=JSON.stringify(f.saved);
+  finalHome.widgetsRefresh.click();await settle();
+  verify(finalHome.widgetsRefresh.disabled&&finalHome.widgetsRefresh.textContent.includes('Refreshing'),'busy label and disabled state');
+  finalHome.widgetsRefresh.click();await settle();verify(refreshCalls.length===4,'one read per connected widget, including hidden Mail');
+  for(const method of methods.slice(0,3))completed[method]();await settle();verify(finalHome.widgetsRefresh.disabled,'wait for last widget');
+  completed.refreshSlack();await settle();verify(!finalHome.widgetsRefresh.disabled,'refresh re-enabled');
+  verify(f.files.size===fileCount&&JSON.stringify(f.saved)===settingsBefore,'Refresh all never writes notes or settings');
+  methods.forEach((name,i)=>r[name]=originalMethods[i]);r.calendarEnabled=previousCalendar;r.slackConnected=previousSlack;r.refreshHomes();
+  finalHome.customize.click();await settle();verify(!finalHome.config.hidden,'Customize opens');
+  finalHome.homeToggle.click();await settle();verify(finalHome.homeGrid.hidden,'Hide widgets remains available');
+  finalHome.homeToggle.click();await settle();verify(!finalHome.homeGrid.hidden,'Show widgets restores row');finalHome.customize.click();await settle();
+  verify(finalHome.mailStatus.textContent.includes('Auto 10m')&&finalHome.youtrackStatus.textContent.includes('Auto 6h'),'new interval labels');
+  r.youtrackProfile=previousYouTrack;finalHome.youtrackKey=null;r.refreshHomes();
+  verify(finalHome.youtrackStatus.textContent==='Not connected','disconnected YouTrack has no automatic-read claim');
   const grid=document.querySelector('.aim-home-grid'),tiles=[...document.querySelectorAll('.aim-home-tile')];
   verify(new Set(tiles.map(x=>Math.round(x.getBoundingClientRect().height))).size===1,'equal widget heights');
   if(query.has('narrow')||query.has('compact'))verify(grid.scrollWidth>grid.clientWidth,'narrow row scrolls horizontally');
   verify(document.documentElement.scrollWidth<=innerWidth,'no viewport overflow');
-  status.textContent='PASS · Calendar/Mail tabs, Scratchpad and Slack · Synthetic data';document.title='PASS · Slack Home fixture';
+  status.textContent='PASS · Refresh all, Calendar/Mail tabs, Scratchpad and Slack · Synthetic data';document.title='PASS · Slack Home fixture';
  } catch(error){status.textContent='FAIL · '+error.message;document.title='FAIL · Slack Home fixture';}
 })();
 '''.replace('ARGS',json.dumps(args).replace('</','<\\/'))

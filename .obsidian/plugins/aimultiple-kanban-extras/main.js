@@ -81,7 +81,7 @@ class AIMultipleKanbanExtras extends Plugin {
       if (!validYouTrackSnapshot(snapshot,profile)) throw Error('The returned account or issue list does not match this setup.');
       commitYouTrackSecret(storage,JSON.stringify(connection));
       const changed = !this.youtrackProfile || this.youtrackScope() !== [profile.host,profile.project,profile.login].join('|');
-      this.youtrackProfile = profile;
+      this.youtrackProfile = profile; this.youtrackNextRefresh = Date.now() + 21600000;
       if (changed) {
         this.youtrackSyncResults.clear(); this.youtrackVerifiedIssues.clear(); this.observedYouTrack = new WeakMap();
         const scope=this.app.vault.adapter.getBasePath?.() || this.app.vault.getName?.() || 'vault';
@@ -89,7 +89,7 @@ class AIMultipleKanbanExtras extends Plugin {
       }
       this.youtrackReadRevision++; this.youtrackSnapshot = snapshot; this.youtrackSnapshotError = ''; this.youtrackRefreshError = '';
       try { await this.persistYouTrackSnapshot(snapshot); }
-      catch (_) { this.youtrackSnapshotError = 'Connected. The local snapshot could not be saved; try Refresh.'; }
+      catch (_) { this.youtrackSnapshotError = 'Connected. The local snapshot could not be saved; try Refresh all widgets.'; }
       this.refreshHomes();
     } finally { this.youtrackSetupBusy = false; }
   }
@@ -98,7 +98,7 @@ class AIMultipleKanbanExtras extends Plugin {
     if (this.youtrackBusy || this.youtrackSetupBusy || this.youtrackImports.size || this.youtrackSyncJobs.size) throw Error('Wait for the current YouTrack action to finish.');
     commitYouTrackSecret(this.app.secretStorage,'');
     this.youtrackSetupRevision = (this.youtrackSetupRevision || 0) + 1;
-    this.youtrackReadRevision++; this.youtrackProfile=null; this.youtrackSnapshot=null;
+    this.youtrackReadRevision++; this.youtrackNextRefresh=0; this.youtrackProfile=null; this.youtrackSnapshot=null;
     this.youtrackVerifiedIssues.clear(); this.youtrackSyncResults.clear();
     this.youtrackSnapshotError=''; this.youtrackRefreshError=''; this.youtrackImportMessage=''; this.refreshHomes();
     const file=`${this.manifest.dir}/youtrack-widget.json`;
@@ -175,10 +175,13 @@ class AIMultipleKanbanExtras extends Plugin {
     this.calendarCache = null;
     this.calendarError = '';
     this.calendarBusy = false;
+    this.calendarNextRefresh = 0;
+    this.widgetsRefreshing = false;
     this.youtrackSnapshot = null;
     this.youtrackSnapshotError = '';
     this.youtrackRefreshError = '';
     this.youtrackBusy = false;
+    this.youtrackNextRefresh = 0;
     this.youtrackImports = new Map();
     this.youtrackImportedFiles = new Map();
     this.youtrackDetailProcesses = new Set();
@@ -269,8 +272,8 @@ class AIMultipleKanbanExtras extends Plugin {
     this.restoreSlack();
     this.scheduleSlackRefresh();
     this.scheduleMailRefresh();
-    void this.loadYouTrackSnapshot();
-    if (this.calendarEnabled) void this.refreshCalendar();
+    void this.loadYouTrackSnapshot().then(() => this.autoRefreshYouTrack());
+    this.autoRefreshCalendar();
   }
 
   onunload() {
@@ -898,9 +901,14 @@ class AIMultipleKanbanExtras extends Plugin {
     }, 'aim-home-text-button');
     entry.customize.setAttribute('aria-expanded', 'false');
     entry.customize.prepend(hubIcon(doc,'sliders-horizontal'));
-    headerActions.append(entry.customize, entry.homeToggle);
+    entry.widgetsRefresh = button('', () => this.refreshAllWidgets(), 'aim-home-text-button');
+    entry.widgetsRefresh.append(hubIcon(doc,'refresh-cw'));
+    entry.widgetsRefreshLabel = el('span','','Refresh all widgets'); entry.widgetsRefresh.append(entry.widgetsRefreshLabel);
+    entry.widgetsRefresh.title = 'Refresh all connected widgets, including the inactive Calendar or Mail tab. Auto: YouTrack 6h; Calendar and Mail 10m; Slack 5m.';
+    headerActions.append(entry.customize, entry.widgetsRefresh);
     header.append(heading, headerActions);
     entry.config = el('div', 'aim-home-config'); entry.config.hidden = true;
+    entry.config.append(entry.homeToggle);
     entry.moduleToggles = {};
     for (const [id, label] of Object.entries(HOME_MODULES)) {
       const toggle = button(label, () => this.setHomeModule(id, !this.homeModules.includes(id)));
@@ -958,9 +966,7 @@ class AIMultipleKanbanExtras extends Plugin {
       panel.setAttribute('aria-labelledby',control.id); panel.tabIndex = 0;
       entry[`${id}Panel`] = panel;
     }
-    entry.mailRefresh = button('Refresh',() => this.refreshMail(),'aim-home-text-button');
-    entry.mailRefresh.setAttribute('aria-label','Refresh Mail inbox'); entry.mailRefresh.hidden = true;
-    mainHead.append(mainTabs,entry.mailRefresh);
+    mainHead.append(mainTabs);
     calendar.append(mainHead,entry.calendarPanel,entry.mailPanel);
     const calendarHead = el('div', 'aim-home-calendar-toolbar');
     entry.monthLabel = el('h3');
@@ -989,8 +995,8 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.agenda = el('div', 'aim-home-agenda');
     entry.calendarFooter = el('div', 'aim-home-calendar-footer');
     entry.calendarConnect = button('Connect Google Calendar', () => this.openCalendarSetup(), 'aim-home-text-button');
-    entry.calendarRefresh = button('Refresh', () => this.refreshCalendar(true), 'aim-home-text-button');
-    entry.calendarFooter.append(entry.calendarConnect, entry.calendarRefresh);
+    entry.calendarStatus = el('span','aim-home-caption'); entry.calendarStatus.setAttribute('role','status');
+    entry.calendarFooter.append(entry.calendarConnect, entry.calendarStatus);
     entry.calendarPanel.append(calendarHead, tabs, entry.calendarDays, entry.agenda, entry.calendarFooter);
 
     entry.scratchBar = el('section','aim-home-scratch-bar');
@@ -1019,23 +1025,19 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.youtrackMessage = el('p', 'aim-home-empty');
     entry.youtrackMessage.setAttribute('role', 'status');
     entry.youtrackMessage.hidden = true;
-    entry.youtrackRefresh = button('Refresh', () => this.refreshYouTrack(), 'aim-home-text-button');
-    entry.youtrackRefresh.setAttribute('aria-label', 'Refresh YouTrack');
     const youtrackFooter = el('div', 'aim-home-tile-footer');
     const source = el('a', 'aim-home-calendar-link', 'Open YouTrack');
     source.href = this.youtrackProfile ? `https://${this.youtrackProfile.host}/issues` : '#';
     source.hidden = !this.youtrackProfile; entry.youtrackSource = source;
     const setup = button('YouTrack settings', () => this.openYouTrackSetup(), 'aim-home-text-button');
     source.target = '_blank'; source.rel = 'noopener noreferrer';
-    youtrackFooter.append(setup, source, entry.youtrackRefresh, entry.youtrackStatus);
+    youtrackFooter.append(setup, source, entry.youtrackStatus);
     youtrack.append(youtrackHead, entry.youtrackList, entry.youtrackMessage, youtrackFooter);
 
     const slack = tile('aim-home-slack-tile', 'Slack inbox'); entry.widgets.slack = slack;
     const slackHead = el('div', 'aim-home-tile-heading');
-    entry.slackRefresh = button('Refresh', () => this.refreshSlack(), 'aim-home-text-button');
-    entry.slackRefresh.setAttribute('aria-label', 'Refresh Slack inbox');
     const slackTitle = el('h3', '', 'Slack · Inbox'); slackTitle.prepend(hubIcon(doc,'messages-square'));
-    slackHead.append(slackTitle, entry.slackRefresh);
+    slackHead.append(slackTitle);
     entry.slackCount = el('span', 'aim-home-caption');
     const slackFilters = el('div', 'aim-home-slack-filters'); slackFilters.setAttribute('aria-label', 'Filter Slack inbox');
     entry.slackFilter = 'all'; entry.slackFilters = new Map();
@@ -1081,7 +1083,6 @@ class AIMultipleKanbanExtras extends Plugin {
       entry[`${id}MainTab`].setAttribute('aria-selected',String(selected));
       entry[`${id}MainTab`].tabIndex = selected ? 0 : -1;
     }
-    entry.mailRefresh.hidden = entry.homePanel !== 'mail';
   }
 
   homePanelVisible(entry,panel) {
@@ -1112,6 +1113,10 @@ class AIMultipleKanbanExtras extends Plugin {
     homeText(entry.homeToggle, this.homeCollapsed ? 'Show widgets' : 'Hide widgets');
     entry.homeToggle.setAttribute('aria-expanded', String(!this.homeCollapsed));
     entry.homeToggle.disabled = !!this.homeSaving;
+    const refreshing = !!(this.widgetsRefreshing || this.calendarBusy || this.mailBusy || this.youtrackBusy || this.slackBusy);
+    entry.widgetsRefresh.disabled = refreshing;
+    entry.widgetsRefresh.setAttribute('aria-busy',String(refreshing));
+    homeText(entry.widgetsRefreshLabel,refreshing ? 'Refreshing widgets…' : 'Refresh all widgets');
     entry.homeGrid.hidden = this.homeCollapsed;
     this.updateHomePanel(entry);
 
@@ -1226,11 +1231,45 @@ class AIMultipleKanbanExtras extends Plugin {
     this.homeTimer = setTimeout(() => {
       if (!this.active) return;
       this.refreshHomes(); this.scheduleHomeRefresh();
-      void this.loadYouTrackSnapshot();
-      if (this.calendarEnabled && !this.homeCollapsed && this.homeModules.includes('calendar') &&
-          [...this.toolbars.values()].some(entry => this.homePanelVisible(entry,'calendar')) && Date.now() - (this.calendarLastAttempt || 0) >= 300000) void this.refreshCalendar();
+      void this.loadYouTrackSnapshot().then(() => this.autoRefreshYouTrack());
+      this.autoRefreshCalendar();
     }, 60000);
     this.homeTimer?.unref?.();
+  }
+
+  autoRefreshCalendar() {
+    const stamp = this.calendarCache?.fetchedAt;
+    const due = Math.max(this.calendarNextRefresh || 0, Number.isFinite(stamp) && stamp <= Date.now() ? stamp + 600000 : 0);
+    if (!this.active || !this.calendarEnabled || this.calendarBusy || this.calendarModal || this.googleSigningIn ||
+        Date.now() < due ||
+        ![...this.toolbars.values()].some(entry => this.homePanelVisible(entry,'calendar'))) return false;
+    void this.refreshCalendar(); return true;
+  }
+
+  autoRefreshYouTrack() {
+    if (!this.active || !this.youtrackProfile || this.youtrackModal || this.youtrackSetupBusy || this.youtrackBusy || this.youtrackImports.size || this.youtrackSyncJobs.size || this.homeCollapsed ||
+        !this.homeModules.includes('youtrack')) return false;
+    const stamp = Date.parse(this.youtrackSnapshot?.fetchedAt);
+    const due = Math.max(this.youtrackNextRefresh || 0, Number.isFinite(stamp) && stamp <= Date.now() ? stamp + 21600000 : 0);
+    if (Date.now() < due || ![...this.toolbars.values()].some(entry => entry.home?.isConnected && entry.widgets?.youtrack?.isConnected &&
+        entry.home.ownerDocument?.visibilityState !== 'hidden' && (!entry.home.getClientRects || entry.home.getClientRects().length > 0))) return false;
+    void this.refreshYouTrack(); return true;
+  }
+
+  async refreshAllWidgets() {
+    if (!this.active || this.widgetsRefreshing) return;
+    this.widgetsRefreshing = true; this.refreshHomes();
+    const reads = [];
+    if (this.calendarEnabled && !this.calendarModal && !this.googleSigningIn) reads.push(['calendarError',() => this.refreshCalendar()]);
+    if (this.mailEnabled && this.mailSupported() && !this.mailModal && !this.mailOpenBusy) reads.push(['mailError',() => this.refreshMail()]);
+    if (this.youtrackProfile && !this.youtrackModal && !this.youtrackSetupBusy && !this.youtrackImports.size && !this.youtrackSyncJobs.size)
+      reads.push(['youtrackRefreshError',() => this.refreshYouTrack()]);
+    if (this.slackConnected && !this.slackModal) reads.push(['slackError',() => this.refreshSlack()]);
+    try {
+      const results = await Promise.allSettled(reads.map(([,read]) => Promise.resolve().then(() => this.active && read())));
+      if (this.active && results.some((result,index) => result.status === 'rejected' || this[reads[index][0]]))
+        new Notice('Some widgets could not refresh. Check their status messages; previous results were kept.');
+    } finally { this.widgetsRefreshing = false; this.refreshHomes(); }
   }
 
   homeRecentNotes() {
@@ -1446,9 +1485,10 @@ class AIMultipleKanbanExtras extends Plugin {
       node.setAttribute('aria-label', `${direction} ${agendaMode ? 'day' : 'month'}`); node.title = `${direction} ${agendaMode ? 'day' : 'month'}`;
     }
     homeText(entry.calendarConnect, this.calendarEnabled ? 'Calendar settings' : 'Connect Google Calendar');
-    entry.calendarRefresh.hidden = !this.calendarEnabled;
-    entry.calendarRefresh.disabled = this.calendarBusy;
-    homeText(entry.calendarRefresh, this.calendarBusy ? 'Refreshing…' : 'Refresh');
+    const stamp = this.calendarCache?.kind === 'google' ? this.calendarCache.stamps?.get(entry.calendarMonth) : this.calendarCache?.fetchedAt;
+    homeText(entry.calendarStatus, !this.calendarEnabled ? '' : this.calendarBusy ? 'Refreshing…' : this.calendarError ? 'Refresh failed · Auto 10m' :
+      (stamp ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(stamp))} · ` : '') + 'Auto 10m');
+    entry.calendarStatus.title = this.calendarError || 'Refreshes every 10 minutes while the Calendar tab is visible. Refresh all widgets also reads inactive tabs.';
     const key = JSON.stringify([entry.selectedDay, this.calendarEnabled, this.calendarCache?.fetchedAt, this.calendarError, this.calendarBusy]);
     if (key === entry.agendaKey) return;
     entry.agendaKey = key; entry.agenda.replaceChildren();
@@ -1470,7 +1510,7 @@ class AIMultipleKanbanExtras extends Plugin {
       if (!this.calendarCache.months.has(monthKey)) {
         if (this.calendarCache.kind === 'google') {
           if (!this.calendarBusy && !this.googleMonthFailures.has(monthKey) && this.homePanelVisible(entry,'calendar')) void this.refreshCalendar(false, monthKey);
-          entry.agenda.append(homeElement(doc, 'p', 'aim-home-empty', this.googleMonthFailures.has(monthKey) ? 'Could not load this month. Use Refresh to retry.' : 'Loading this month…'));
+          entry.agenda.append(homeElement(doc, 'p', 'aim-home-empty', this.googleMonthFailures.has(monthKey) ? 'Could not load this month. Use Refresh all widgets to retry.' : 'Loading this month…'));
           return;
         }
         const monthStart = new Date(day.getFullYear(), day.getMonth(), 1);
@@ -1528,8 +1568,6 @@ class AIMultipleKanbanExtras extends Plugin {
   updateMailWidget(entry) {
     if (!entry.mailList) return;
     const doc = entry.scope.ownerDocument, snapshot = this.mailSnapshot, supported = this.mailSupported();
-    homeText(entry.mailRefresh,this.mailBusy ? 'Refreshing…' : 'Refresh');
-    entry.mailRefresh.disabled = this.mailBusy || !this.mailEnabled || !supported;
     entry.mailConnect.disabled = !supported || (this.mailBusy && !this.mailEnabled);
     homeText(entry.mailConnect,this.mailEnabled ? 'Mail settings' : this.mailBusy ? 'Connecting…' : 'Connect Mail');
     for (const [id,control] of entry.mailFilters) control.setAttribute('aria-pressed',String(id === entry.mailFilter));
@@ -1543,7 +1581,7 @@ class AIMultipleKanbanExtras extends Plugin {
     }
     entry.mailAccountSelect.disabled = !snapshot;
     entry.mailList.setAttribute('aria-busy',String(this.mailBusy));
-    homeText(entry.mailStatus,snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : '');
+    homeText(entry.mailStatus,this.mailBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 10m` : this.mailEnabled ? 'Auto 10m' : '');
     entry.mailStatus.title = snapshot ? `${snapshot.accounts.length} accounts · Last read ${(snapshot.durationMs / 1000).toFixed(1)}s. Mail stays in memory on this Mac.` : '';
     homeText(entry.mailMessage,this.mailError + (this.mailError && snapshot ? ' Showing the last successful results.' : ''));
     entry.mailMessage.hidden = !this.mailError;
@@ -1595,7 +1633,7 @@ class AIMultipleKanbanExtras extends Plugin {
     } catch (error) {
       if (current()) { this.mailError = error?.mailSafe ? error.message : mailFailure('read').message; this.mailPermissionError = error?.mailCode === -1743; }
     } finally {
-      if (current()) { this.mailBusy = false; this.mailNextRefresh = Date.now() + 300000; this.refreshHomes(); this.scheduleMailRefresh(); }
+      if (current()) { this.mailBusy = false; this.mailNextRefresh = Date.now() + 600000; this.refreshHomes(); this.scheduleMailRefresh(); }
     }
   }
 
@@ -1630,7 +1668,7 @@ class AIMultipleKanbanExtras extends Plugin {
       const content = modal.contentEl; content.empty();
       content.append(homeElement(doc,'h2','','Apple Mail'));
       content.append(homeElement(doc,'p','','Up to 50 messages from each enabled account’s inbox, sorted by received date. Each view shows at most 50 loaded messages. Unread filters this sample; it is not a total unread count. Archives and other folders are not included.'));
-      content.append(homeElement(doc,'p','','Messages stay in memory on this Mac. Automatic refresh runs about every five minutes while Mail is visible. Opening a message in Apple Mail may mark it read.'));
+      content.append(homeElement(doc,'p','','Messages stay in memory on this Mac. Automatic refresh runs about every ten minutes while Mail is visible. Use Refresh all widgets for an immediate read, including inactive tabs. Opening a message in Apple Mail may mark it read.'));
       content.append(homeElement(doc,'p','','Disconnect stops reads and clears this list. To remove macOS permission, use System Settings → Privacy & Security → Automation. Connect separately on each Mac.'));
       const disconnect = homeElement(doc,'button','','Disconnect Mail'); disconnect.type = 'button';
       disconnect.addEventListener('click',() => { void this.runAction(async () => { await this.disconnectMail(); modal.close(); }); }); content.append(disconnect);
@@ -1794,8 +1832,6 @@ class AIMultipleKanbanExtras extends Plugin {
   updateSlackWidget(entry) {
     if (!entry.slackList) return;
     const doc = entry.scope.ownerDocument, snapshot = this.slackSnapshot;
-    homeText(entry.slackRefresh, this.slackBusy ? 'Refreshing…' : 'Refresh');
-    entry.slackRefresh.disabled = this.slackBusy || !this.slackConnected;
     entry.slackList.setAttribute('aria-busy', String(this.slackBusy));
     homeText(entry.slackConnect, this.slackConnected ? 'Slack settings' : 'Connect Slack');
     homeText(entry.slackCount, this.slackConnected
@@ -1805,7 +1841,7 @@ class AIMultipleKanbanExtras extends Plugin {
       control.setAttribute('aria-pressed', String(key === entry.slackFilter));
       if (key==='channel' || key==='group') { control.hidden=!this.slackSources[key]; control.title=(key==='channel'?'#':'@')+this.slackSources[key]; }
     }
-    homeText(entry.slackStatus, snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : this.slackConnected ? 'Auto 5m' : '');
+    homeText(entry.slackStatus, this.slackBusy ? 'Refreshing…' : snapshot ? `Updated ${new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(snapshot.fetchedAt))} · Auto 5m` : this.slackConnected ? 'Auto 5m' : '');
     entry.slackStatus.title = (Number.isFinite(snapshot?.durationMs) ? `Last refresh took ${(snapshot.durationMs/1000).toFixed(1)}s. ` : '') + 'Refreshes every 5 minutes while Home and Slack are visible. Current messages remain available during refresh.';
     homeText(entry.slackMessage, this.slackError + (this.slackError && snapshot ? ' Showing the last successful results.' : ''));
     entry.slackMessage.hidden = !this.slackError;
@@ -1814,7 +1850,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.slackRenderKey = key; entry.slackList.replaceChildren();
     if (!snapshot) {
       entry.slackList.append(homeElement(doc, 'p', 'aim-home-empty', this.slackBusy ? 'Checking your Slack connection…'
-        : this.slackConnected ? 'Click Refresh to load your recent messages.' : 'Connect Slack to see incoming DMs and mentions. Add an optional notes channel or user group in settings.'));
+        : this.slackConnected ? 'Click Refresh all widgets to load your recent messages.' : 'Connect Slack to see incoming DMs and mentions. Add an optional notes channel or user group in settings.'));
       return;
     }
     const rows = snapshot.rows.filter(row => !entry.slackFilter || entry.slackFilter === 'all' || row.sources?.includes(entry.slackFilter)).slice(0,50);
@@ -1982,7 +2018,11 @@ class AIMultipleKanbanExtras extends Plugin {
       if (this.calendarSource === 'google') this.googleMonthFailures.add(monthKey);
       this.calendarError = this.calendarCache ? 'Refresh failed. Showing the last successful calendar data.' : 'Calendar unavailable. Check the connection in Calendar settings.';
       if (manual) new Notice(this.calendarError);
-    } finally { this.calendarBusy = false; this.refreshHomes(); }
+    } finally {
+      this.calendarBusy = false;
+      if (this.active && revision === this.calendarRevision) this.calendarNextRefresh = Date.now() + 600000;
+      this.refreshHomes();
+    }
   }
 
   async disconnectCalendar() {
@@ -2369,7 +2409,7 @@ class AIMultipleKanbanExtras extends Plugin {
       this.youtrackSnapshot = data; this.youtrackSnapshotError = '';
     } catch (_) {
       if (!this.active || revision !== this.youtrackReadRevision) return;
-      this.youtrackSnapshotError = 'Saved list unavailable. Press Refresh to load your YouTrack cards.';
+      this.youtrackSnapshotError = 'Saved list unavailable. Press Refresh all widgets to load your YouTrack cards.';
     }
     this.refreshHomes();
   }
@@ -2537,11 +2577,11 @@ class AIMultipleKanbanExtras extends Plugin {
         connection: 'The local YouTrack connection is unavailable. Open YouTrack settings to check your connection.',
         authentication: 'YouTrack access was rejected. Reconnect in YouTrack settings, then try again.',
         identity: 'The local YouTrack connection belongs to another account. Check the configured login.',
-        timeout: 'YouTrack took too long. Press Refresh to try again.',
+        timeout: 'YouTrack took too long. Press Refresh all widgets to try again.',
         network: 'Could not reach YouTrack. Check your connection and try again.'
       };
       if (this.active) this.youtrackRefreshError = (Object.hasOwn(messages, error?.youtrackCode) ? messages[error.youtrackCode] : 'Could not refresh YouTrack. Try again.') + ' Kept the last saved list.';
-    } finally { this.youtrackBusy = false; this.refreshHomes(); }
+    } finally { this.youtrackBusy = false; this.youtrackNextRefresh = Date.now() + 21600000; this.refreshHomes(); }
   }
 
   findYouTrackLocalNote(id) {
@@ -2760,14 +2800,11 @@ class AIMultipleKanbanExtras extends Plugin {
       entry.youtrackMessage.append(report);
     }
     entry.youtrackMessage.hidden = !message && !reports;
-    homeText(entry.youtrackRefresh, this.youtrackBusy ? 'Refreshing…' : this.youtrackProfile ? 'Refresh' : 'Connect');
-    entry.youtrackRefresh.setAttribute('aria-label',this.youtrackProfile ? 'Refresh YouTrack' : 'Connect YouTrack');
     if (entry.youtrackSource) { entry.youtrackSource.hidden = !this.youtrackProfile; entry.youtrackSource.href = this.youtrackProfile ? `https://${this.youtrackProfile.host}/issues` : '#'; }
-    entry.youtrackRefresh.disabled = this.youtrackBusy;
     entry.youtrackList.setAttribute('aria-busy', String(this.youtrackBusy));
     const stamp = this.youtrackSnapshot?.fetchedAt;
-    homeText(entry.youtrackStatus, stamp ? `Snapshot · ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(stamp))}` : 'Not loaded');
-    entry.youtrackStatus.title = 'Last successful fetch. Refresh reads your current open cards from YouTrack; there is no automatic polling.';
+    homeText(entry.youtrackStatus, this.youtrackBusy ? 'Refreshing…' : !this.youtrackProfile ? 'Not connected' : (stamp ? `Snapshot · ${new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(stamp))}` : 'Not loaded') + ' · Auto 6h');
+    entry.youtrackStatus.title = 'Reads your open cards every 6 hours while YouTrack is visible, or with Refresh all widgets. Updates only this snapshot; never imports notes or changes issue status.';
   }
 
   async ensureQuickNotesFolder() {
@@ -3818,7 +3855,7 @@ class HomeSlackModal extends Modal {
     input.type = 'password'; input.autocomplete = 'off'; input.spellcheck = false; input.maxLength = 2048;
     input.setAttribute('aria-label', 'Slack User OAuth Token'); input.placeholder = this.plugin.slackConnected ? 'Leave empty to keep your saved token' : 'xoxp-…'; label.append(input);
     this.contentEl.append(label, el('p', 'aim-home-caption', 'User scopes: search:read, users:read, im:read, im:history, plus channels:read/channels:history for a notes channel and usergroups:read for a user group. Reinstall the app after changing scopes.'));
-    this.contentEl.append(el('p', 'aim-home-caption', 'Your token stays in Obsidian Keychain on this Mac. Messages stay in memory. The last 7 days refresh every 5 minutes while Home and Slack are visible, or when you click Refresh. Reconnect separately on another Mac.'));
+    this.contentEl.append(el('p', 'aim-home-caption', 'Your token stays in Obsidian Keychain on this Mac. Messages stay in memory. The last 7 days refresh every 5 minutes while Home and Slack are visible, or when you click Refresh all widgets. Reconnect separately on another Mac.'));
     const message = el('p', 'aim-home-feed-message'); message.setAttribute('role', 'status'); this.contentEl.append(message);
     const actions = el('div', 'aim-home-setup-actions');
     const connect = el('button', 'mod-cta', this.plugin.slackConnected ? 'Replace connection' : 'Connect Slack'); connect.type = 'button';
@@ -3870,7 +3907,7 @@ class HomeCalendarModal extends Modal {
     const importLabel = el('label', 'aim-home-import-label', 'Import client JSON');
     const importFile = el('input'); importFile.type = 'file'; importFile.accept = '.json,application/json'; importFile.setAttribute('aria-label', 'Import client JSON');
     importLabel.append(importFile); this.contentEl.append(importLabel);
-    this.contentEl.append(el('p', 'aim-home-caption', 'Credentials stay in Obsidian Keychain on this device, not in notes or plugin settings. Events stay in memory. Home refreshes about every 5 minutes while open.'));
+    this.contentEl.append(el('p', 'aim-home-caption', 'Credentials stay in Obsidian Keychain on this device, not in notes or plugin settings. Events stay in memory. Refreshes about every 10 minutes while the Calendar tab is visible. Refresh all widgets also reads inactive tabs.'));
     const message = el('p', 'aim-home-feed-message'); message.setAttribute('role', 'status'); this.contentEl.append(message);
     importFile.addEventListener('change', async () => {
       const file = importFile.files?.[0]; if (!file) return;
