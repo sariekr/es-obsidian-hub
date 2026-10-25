@@ -9,6 +9,54 @@ const taxonomy = JSON.parse(fs.readFileSync(path.join(root, '../../../Hub/_kanba
 Object.assign(taxonomy,{folder_to_category:{Data:'data',MSc:'msc',Personal:'personal',Other:'other'},view_to_folder:{Data:'Hub/Data',MSc:'Hub/MSc',Benchmark:'Hub/Benchmark'}});
 const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('Type icons are explicit preferences, with a neutral fallback and no startup writes',async()=>{
+ const f=fixture([], {typeIcons:{Data:'flask-conical',MSc:'not-a-real-icon',Personal:'<svg onload=alert(1)>'}});await f.start();
+ assert.equal(typeof f.plugin.typeIcon,'function');
+ assert.equal(f.plugin.typeIcon('Data'),'flask-conical');
+ assert.equal(f.plugin.typeIcon('MSc'),'folder');
+ assert.equal(f.plugin.typeIcon('Personal'),'folder');
+ assert.equal(f.plugin.typeIcon('Quick Notes'),'folder');
+ assert.equal(f.plugin.typeIcon('Unfamiliar name'),'folder');
+ assert.equal(f.saves.length,0);f.plugin.unload();
+});
+
+test('Choosing and resetting a Type icon preserves notes and unrelated settings and survives reload',async()=>{
+ const f=fixture([['Hub/Data/Report.md',{tags:['kanban'],category:'Data',priority:'high'}]],{homeCollapsed:true,unrelated:{keep:7}});await f.start();
+ assert.equal(typeof f.plugin.setTypeIcon,'function');
+ const file=f.files.get('Hub/Data/Report.md');file.content='Keep this body';const fm=JSON.stringify(f.caches.get(file.path));
+ await f.plugin.setTypeIcon('Data','flask-conical');
+ assert.equal(f.plugin.typeIcon('Data'),'flask-conical');
+ assert.equal(f.plugin.boardCardModel(file).typeIcon,'flask-conical');
+ assert.equal(f.saves.at(-1).homeCollapsed,true);assert.deepEqual(f.saves.at(-1).unrelated,{keep:7});
+ assert.equal(file.path,'Hub/Data/Report.md');assert.equal(file.content,'Keep this body');assert.equal(JSON.stringify(f.caches.get(file.path)),fm);assert.equal(f.moves.length,0);
+ const reloaded=fixture([],f.saves.at(-1));await reloaded.start();assert.equal(reloaded.plugin.typeIcon('Data'),'flask-conical');reloaded.plugin.unload();
+ await f.plugin.setTypeIcon('Data','folder');assert.equal(f.plugin.typeIcon('Data'),'folder');assert.equal(Object.hasOwn(f.saves.at(-1).typeIcons,'Data'),false);
+ f.plugin.unload();
+});
+
+test('Type icon writes serialize with widget settings and keep previous appearance when saving fails',async()=>{
+ const f=fixture([],{unrelated:'keep'});await f.start();
+ assert.equal(typeof f.plugin.setTypeIcon,'function');
+ await Promise.all([f.plugin.setTypeIcon('Data','code'),f.plugin.setTypeIcon('MSc','book-open'),f.plugin.setHomeCollapsed(true)]);
+ assert.equal(f.saves.at(-1).typeIcons.Data,'code');assert.equal(f.saves.at(-1).typeIcons.MSc,'book-open');assert.equal(f.saves.at(-1).homeCollapsed,true);
+ f.plugin.saveData=async()=>{throw Error('Disk full');};
+ await assert.rejects(f.plugin.setTypeIcon('Data','heart'),/Disk full/);assert.equal(f.plugin.typeIcon('Data'),'code');
+ f.plugin.unload();
+});
+
+test('Type icon changes reject invalid icons, missing or replaced folders, external conflicts and unload',async()=>{
+ const f=fixture();await f.start();assert.equal(typeof f.plugin.setTypeIcon,'function');
+ await assert.rejects(f.plugin.setTypeIcon('Missing','book-open'),/folder/i);
+ await assert.rejects(f.plugin.setTypeIcon('Data','url(https://example.test)'),/icon/i);
+ let release;f.plugin.tagSuggestionSave=new Promise(r=>release=r);
+ const pending=f.plugin.setTypeIcon('Data','book-open');const folder=f.files.get('Hub/Data');
+ f.files.set('Hub/Data',{...folder});release();await assert.rejects(pending,/folder/i);assert.equal(f.saves.length,0);
+ f.files.set('Hub/Data',folder);
+ f.plugin.loadData=async()=>({typeIcons:{Data:'heart'}});
+ await assert.rejects(f.plugin.setTypeIcon('Data','book-open'),/changed/i);assert.equal(f.saves.length,0);
+ f.plugin.unload();await assert.rejects(f.plugin.setTypeIcon('Data','book-open'),/closed/i);assert.equal(f.saves.length,0);
+});
+
 test('Board excerpts use the next-step section without YAML, fenced examples or empty placeholders',async()=>{
  const f=fixture();await f.start();
  assert.equal(typeof f.plugin.boardNextStep,'function');

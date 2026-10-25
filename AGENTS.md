@@ -2,7 +2,7 @@
 
 This repository is a redistributable **starter Obsidian vault for macOS**, not the maintainer's personal vault. Read README.md, docs/CONNECTIONS.md and docs/VERIFICATION.md first. The primary user is new to Obsidian. Keep the UI in English and explain setup in the user's language.
 
-Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.2.0 adds compact board cards, temporary search/Type filters and a read-only Preview panel. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) records optional icon/color candidates; none are bundled or enabled by this change.
+Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.3.0 adds configurable Type icons and restrained priority colors to the 1.2.0 compact cards, temporary filters and read-only Preview. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) separates plugin research from the implemented built-in icons; no additional plugin is bundled or enabled.
 
 ## Install for a new user
 
@@ -48,6 +48,8 @@ Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next
 Any Markdown note under Hub can join the board without moving. Removing membership preserves body and location. Explicit Type changes may move the note or wrapping folder; reject collisions and stale targets. Native deletion must target the current Markdown file, never its parent. Keep per-file concurrency guards and rollback reporting.
 
 Board filters affect only currently rendered cards in the managed main Base. Preserve the saved Base query, column totals, WIP totals and vendor order; filters never write settings or notes. Priority/Type chip actions reuse the note toolbar guards. Preview must remain a bounded read-only text renderer with no embeds, executable HTML or remote images. Keep invalidation, stale-read checks, owner-document positioning and cleanup across redraw/leaf close/unload.
+
+Type icon choices are explicit `typeIcons` settings keyed by live direct Hub folder names. Keep the neutral `folder` default, built-in icon allowlist, text labels and shared serialized settings queue. Do not infer icons/colors from personal folder names or save defaults on render/startup. Choosing an icon never moves a note; choosing Type retains its existing move guards. Keep Type icons neutral, priority accents limited to High/Urgent, and selection tied to the theme accent. Preserve readable Done controls without changing vendor styles.
 
 Keep three columns (`backlog`, `in-progress`, `done`), live Hub Type discovery and existing `processFrontMatter` writes. Rendering must not write default properties, move notes or alter settings. Do not hand-edit `data.json` while Obsidian is running. Settings changes use serialized `loadData`/`saveData`, preserving unrelated fields. Do not alter theme or vendor files to fix an Extras selector.
 

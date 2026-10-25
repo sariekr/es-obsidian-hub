@@ -1,7 +1,7 @@
 {
   "id": "aimultiple-kanban-extras",
   "name": "ES Obsidian Hub",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "minAppVersion": "1.11.4",
   "description": "A starter hub with Calendar / Mail, YouTrack, Slack, Scratchpad and a three-column kanban board.",
   "author": "sariekr",

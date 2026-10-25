@@ -14,6 +14,7 @@ styles = ['''
 body.narrow .fixture-leaf{width:min(800px,100%)}body.compact .fixture-leaf{width:min(480px,100%)}
 .fixture-bar{height:44px;padding:10px 16px;display:flex;align-items:center;gap:20px}
 button,select,input{font:inherit} .obk-card{margin:10px}.obk-card-title{font-weight:600}
+body.neutral .aim-card-priority-icon{color:var(--text-normal)!important}
 ''']
 for path in [VAULT/'.obsidian/themes/AnuPpuccin/theme.css', ROOT.parent/'kanban-bases-view/styles.css',
              VAULT/'.obsidian/snippets/kanban-column-fill-width.css', ROOT/'styles.css']:
@@ -22,7 +23,7 @@ args = {'source': (ROOT/'main.js').read_text(), 'schema': (VAULT/'Hub/_kanban/ta
 checks = r'''
 (async()=>{
  const query=new URLSearchParams(location.search),status=document.getElementById('qa-status');
- document.body.className=(query.has('light')?'theme-light ctp-latte':'theme-dark ctp-mocha')+' ctp-accent-teal anuppuccin-accent-toggle'+(query.has('narrow')?' narrow':'')+(query.has('compact')?' compact':'');
+ document.body.className=(query.has('light')?'theme-light ctp-latte':'theme-dark ctp-mocha')+' ctp-accent-teal anuppuccin-accent-toggle'+(query.has('narrow')?' narrow':'')+(query.has('compact')?' compact':'')+(query.has('neutral')?' neutral':'');
  const verify=(ok,label)=>{if(!ok)throw Error(label);};
  const settle=async()=>{for(let n=0;n<6;n++)await new Promise(r=>setTimeout(r,0));};
  try {
@@ -35,7 +36,7 @@ checks = r'''
     if(!f.files.has(path)){
      const file=new File(path);file.content='---\nprivate_field: OMIT_FROM_PREVIEW\n---\n## Sonraki adım\n- [ ] Review **the results** and [[Methodology|the method]].\n\n## Tamamlanma kriteri\nThe comparison is ready.\n\n## Notes\n<script>Literal text, never executed</script>\n\n'+('More supporting context.\n\n'.repeat(12));
      f.files.set(path,file);
-     f.caches.set(path,{frontmatter:{tags:['kanban'],board_column:['backlog','in-progress','done'][Math.floor(index/3)],priority:index%3?'medium':'high',category:index%2?'MSc':'Benchmark'}});
+     f.caches.set(path,{frontmatter:{tags:['kanban'],board_column:['backlog','in-progress','done'][Math.floor(index/3)],priority:index===0?'high':['urgent','high','medium','low'][index%4],category:index%2?'MSc':'Benchmark'}});
     }
     card.querySelector('.obk-card-title').textContent=titles[index%3]+(index===0?' — İstatistik':'');
     for(const child of [...card.children])if(child.tagName==='DIV'&&!child.className)child.remove();
@@ -79,6 +80,27 @@ checks = r'''
   cardFile.content=original.find(x=>x[0]===cardFile.path)[1];f.app.vault.emit('modify',cardFile);await settle();
   verify(original.every(([path,body,cache])=>f.files.get(path)?.content===body&&JSON.stringify(f.caches.get(path))===cache),'filter and preview preserve note contents and properties');
   verify(Object.keys(f.saved).length===0,'no settings writes');
+  entry.customize.click();entry.home.querySelector('.aim-type-icon-settings').open=true;
+  const choose=async(type,icon)=>{const select=entry.typeIconInputs.get(type).select;select.value=icon;select.dispatchEvent(new Event('change',{bubbles:true}));await p.tagSuggestionSave;await settle();};
+  verify(cards().every(c=>c.querySelector('[data-property="category"] .aim-ui-icon')?.getAttribute('data-icon')==='folder'),'neutral defaults, no folder-name assumptions');
+  await choose('Benchmark','flask-conical');await choose('MSc','graduation-cap');
+  verify(cards()[0].querySelector('[data-property="category"] .aim-ui-icon').getAttribute('data-icon')==='flask-conical','saved icon refreshes existing cards');
+  verify(cards()[0].querySelector('[data-property="category"]').textContent==='Benchmark','Type label retained');
+  verify(cards()[0].querySelector('[data-priority="high"] .aim-ui-icon').getAttribute('data-icon')==='chevrons-up','priority uses its own shape');
+  f.failSettings=true;await choose('Benchmark','heart');f.failSettings=false;
+  verify(p.typeIcon('Benchmark')==='flask-conical'&&entry.typeIconInputs.get('Benchmark').select.value==='flask-conical','failed save restores the selected icon');
+  verify(entry.typeIconMessage.textContent.includes('failure'),'failed save is visible');
+  const named='Customer operations with a very long folder name';
+  const added=await f.app.vault.createFolder('Hub/'+named);await settle();
+  verify(entry.typeIconInputs.has(named)&&p.typeIcon(named)==='folder','new arbitrary Type appears with a neutral icon');
+  verify([...entry.typeIconRows.children].every(row=>row.scrollWidth<=row.clientWidth+1),'long Type settings fit the panel');
+  f.files.delete(added.path);const hub=f.files.get('Hub');hub.children=hub.children.filter(x=>x!==added);f.app.vault.emit('delete',added);await settle();
+  verify(!entry.typeIconInputs.has(named),'deleted Type disappears from settings');
+  cards()[0].querySelector('[data-property="category"]').click();await settle();
+  verify(document.querySelector('.aim-property-option .aim-ui-icon[data-icon="flask-conical"]'),'Type picker uses the same assigned icon');
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+  verify(original.every(([path,body,cache])=>f.files.get(path)?.content===body&&JSON.stringify(f.caches.get(path))===cache),'icon choices never move or modify notes');
+  entry.customize.click();
   const count=document.querySelectorAll('.aim-board-tools').length;
   const other=f.addBoard(document,'Hub/Other/Other.base');await settle();
   verify(!other.view.containerEl.querySelector('.aim-board-tools'),'other Bases untouched');
@@ -87,12 +109,26 @@ checks = r'''
   verify(!document.querySelector('.aim-board-preview,.aim-board-tools,.aim-card-details'),'unload cleans owned UI');
   verify(cards().every(c=>!c.classList.contains('aim-card-filtered')&&!c.classList.contains('aim-card-managed')),'unload restores vendor cards');
   await f.reload();await settle();
+  verify(f.plugin.typeIcon('Benchmark')==='flask-conical','Type icons survive reload');
   verify(document.querySelectorAll('.aim-board-tools').length===1,'reload mounts once');
   verify(document.querySelectorAll('.obk-column').length===3,'three columns preserved');
   verify(document.documentElement.scrollWidth<=innerWidth,'no page overflow');
-  status.textContent='PASS · Board cards, filters, preview, redraw, cleanup · Synthetic data';
+  const pixel=color=>{const ctx=document.createElement('canvas').getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data].map((v,i)=>i===3?v/255:v);};
+  const blend=(fg,bg)=>fg.slice(0,3).map((v,i)=>v*fg[3]+bg[i]*(1-fg[3])).concat(1);
+  const background=el=>{if(!el)return [255,255,255,1];const color=pixel(getComputedStyle(el).backgroundColor);return color[3]===1?color:blend(color,background(el.parentElement));};
+  const luminance=rgb=>rgb.slice(0,3).map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+  const contrast=(fg,bg)=>{const a=luminance(blend(fg,bg)),b=luminance(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
+  const samples=[...document.querySelectorAll('.aim-card-chip,.aim-card-preview,.aim-card-summary,.aim-board-count,.aim-card-footer .aim-ui-icon,.aim-board-search-field .aim-ui-icon')].filter(el=>el.getClientRects().length);
+  verify(samples.every(el=>{for(let node=el;node;node=node.parentElement)if(Number(getComputedStyle(node).opacity)<1)return false;return true;}),'controls and excerpts are not dimmed by ancestor opacity, including Done');
+  const ratios=samples.map(el=>({kind:el.classList.contains('aim-ui-icon')?'icon':'text',ratio:contrast(pixel(getComputedStyle(el).color),background(el))}));
+  const searchInput=document.querySelector('.aim-board-tools input');
+  ratios.push({kind:'text',ratio:contrast(pixel(getComputedStyle(searchInput,'::placeholder').color),background(searchInput))});
+  verify(ratios.every(x=>x.ratio >= (x.kind==='icon'?3:4.5)),'changed text and icon contrast');
+  window.iconContrast=ratios;
+  status.textContent='PASS · Icons, settings, filters, preview, cleanup · Text ≥ '+Math.min(...ratios.filter(x=>x.kind==='text').map(x=>x.ratio)).toFixed(2)+':1 · Icons ≥ '+Math.min(...ratios.filter(x=>x.kind==='icon').map(x=>x.ratio)).toFixed(2)+':1';
   document.title='PASS · Board UI fixture';
   if(query.has('preview')){document.querySelector('.aim-card-preview').click();await settle();}
+  if(query.has('settings')){const live=[...f.plugin.toolbars.values()][0];live.customize.click();live.home.querySelector('.aim-type-icon-settings').open=true;}
  }catch(error){status.textContent='FAIL · '+error.message;document.title=status.textContent;}
 })();
 '''.replace('ARGS',json.dumps(args).replace('</','<\\/')).replace('</','<\\/')
