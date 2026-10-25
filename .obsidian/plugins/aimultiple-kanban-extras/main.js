@@ -22,6 +22,11 @@ const YOU_TRACK_STATES = Object.freeze({backlog:'To do', 'in-progress':'In Progr
 const NOTE_FIELDS = { board_column: "Status", priority: "Priority", category: "Type" };
 const MANAGED_PROPERTIES = new Set(["completed_at", "completed_at_source"]);
 const RESERVED_PROPERTIES = new Set(["__proto__", "constructor", "prototype", "position"]);
+// A small built-in Lucide set, available in the supported Obsidian version.
+// Folder names have no implied meaning: people choose their own Type icons.
+const TYPE_ICONS = Object.freeze({folder:'Folder (default)',briefcase:'Briefcase','graduation-cap':'Graduation cap',user:'Person',
+  'sticky-note':'Sticky note','flask-conical':'Flask',code:'Code','book-open':'Book',heart:'Heart',lightbulb:'Lightbulb',ticket:'Ticket',palette:'Palette'});
+const PRIORITY_ICONS = Object.freeze({urgent:'alert-circle',high:'chevrons-up',medium:'equal',low:'chevron-down'});
 
 class AIMultipleKanbanExtras extends Plugin {
   async repairInitialBoard() {
@@ -115,6 +120,8 @@ class AIMultipleKanbanExtras extends Plugin {
       throw new Error("Invalid kanban taxonomy.md");
     }
     const savedSettings = await this.loadData();
+    this.typeIcons = typeIconsFromSettings(savedSettings);
+    this.typeIconSaving = new Set();
     this.slackSources = {channel:'',group:''};
     this.youtrackProfile = null;
     this.restoreYouTrack();
@@ -459,6 +466,71 @@ class AIMultipleKanbanExtras extends Plugin {
   }
 
   // Display-only enhancements on the managed Base; preserve its query and card order.
+  typeIcon(type) {
+    return Object.hasOwn(this.typeIcons, type) ? this.typeIcons[type] : 'folder';
+  }
+
+  async setTypeIcon(type, icon) {
+    if (!this.active) throw Error('The dashboard was closed.');
+    if (!Object.hasOwn(TYPE_ICONS, icon)) throw Error('Choose an icon from the list.');
+    const folder = this.app.vault.getAbstractFileByPath('Hub/' + type);
+    if (!folder?.children || !this.categoryValues().includes(type)) throw Error('This Type folder no longer exists. Reopen Customize.');
+    if (this.typeIconSaving.has(type)) throw Error('Wait for this icon to finish saving.');
+    const expected = this.typeIcon(type);
+    this.typeIconSaving.add(type); this.refreshHomes();
+    const job = this.tagSuggestionSave.then(async () => {
+      const settings = await this.loadData() || {};
+      if (!this.active) throw Error('The dashboard was closed.');
+      if (this.app.vault.getAbstractFileByPath('Hub/' + type) !== folder || !this.categoryValues().includes(type))
+        throw Error('The Type folder changed. Reopen Customize.');
+      const current = typeIconsFromSettings(settings);
+      if ((Object.hasOwn(current,type) ? current[type] : 'folder') !== expected)
+        throw Error('Type icons changed elsewhere. Reload the hub before trying again.');
+      const next = {...current};
+      if (icon === 'folder') delete next[type]; else next[type] = icon;
+      await this.saveData({...settings,typeIcons:next});
+      if (this.active) this.typeIcons = next;
+    });
+    this.tagSuggestionSave = job.catch(() => {});
+    try { await job; }
+    finally {
+      this.typeIconSaving.delete(type);
+      this.refreshHomes(); this.refreshBoardTools(); this.refreshNoteToolbars();
+    }
+  }
+
+  updateTypeIconControls(entry) {
+    if (!entry.typeIconRows) return;
+    const types = this.categoryValues(), signature = JSON.stringify(types);
+    const doc = entry.scope.ownerDocument;
+    if (entry.typeIconSignature !== signature) {
+      entry.typeIconRows.replaceChildren(); entry.typeIconInputs = new Map();
+      for (const type of types) {
+        const row = homeElement(doc,'label','aim-type-icon-row');
+        const icon = hubIcon(doc,this.typeIcon(type));
+        const name = homeElement(doc,'span','aim-type-icon-name',type);
+        const select = doc.createElement('select'); select.setAttribute('aria-label','Icon for ' + type);
+        for (const [value,label] of Object.entries(TYPE_ICONS)) {
+          const option = doc.createElement('option'); option.value = value; option.textContent = label; select.append(option);
+        }
+        select.addEventListener('change', () => {
+          const value = select.value;
+          homeText(entry.typeIconMessage,'Saving…');
+          void this.setTypeIcon(type,value).then(() => homeText(entry.typeIconMessage,'Icon saved.'))
+            .catch(error => homeText(entry.typeIconMessage,error.message || 'Could not save the icon. Try again.'));
+        });
+        row.append(icon,name,select); entry.typeIconRows.append(row);
+        entry.typeIconInputs.set(type,{icon,select});
+      }
+      entry.typeIconSignature = signature;
+    }
+    for (const [type,{icon,select}] of entry.typeIconInputs) {
+      const value = this.typeIcon(type);
+      if (icon.getAttribute('data-icon') !== value) { setIcon(icon,value); icon.setAttribute('data-icon',value); }
+      select.value = value; select.disabled = this.typeIconSaving.has(type);
+    }
+  }
+
   boardNextStep(text) {
     let section = false, depth = 0, fence = '';
     for (const line of boardBody(text).slice(0, 128000).replace(/<!--[\s\S]*?-->/g,'').split(/\r?\n/)) {
@@ -485,7 +557,7 @@ class AIMultipleKanbanExtras extends Plugin {
     const priority = typeof fm.priority === 'string' ? fm.priority : '';
     return {
       title: title || (typeof fm.youtrack_title === 'string' && fm.youtrack_title) || file.basename,
-      path: file.path, type, priority: priority.replace(/^./, c => c.toUpperCase()),
+      path: file.path, type, typeIcon:this.typeIcon(type), priority: priority.replace(/^./, c => c.toUpperCase()),
       priorityValue: this.taxonomy.priorities.includes(priority) ? priority : '',
       id: typeof fm.youtrack_id === 'string' ? fm.youtrack_id : '',
       stale: fm.board_column !== 'done' && Date.now() - file.stat.mtime > 30 * 86400000,
@@ -576,7 +648,9 @@ class AIMultipleKanbanExtras extends Plugin {
         entry.boardQuery = ''; entry.boardType = ''; search.value = ''; type.value = '';
         this.filterBoardCards(entry); search.focus();
       });
-      row.append(search,type,clear,count);
+      const searchLabel = doc.createElement('label'); searchLabel.className = 'aim-board-search-field';
+      searchLabel.append(hubIcon(doc,'search'),search);
+      row.append(searchLabel,type,clear,count);
       entry.boardTypeSignature = null;
     }
     if (entry.home.nextElementSibling !== entry.boardTools) entry.home.after(entry.boardTools);
@@ -606,7 +680,8 @@ class AIMultipleKanbanExtras extends Plugin {
         const summary = doc.createElement('p'); summary.className = 'aim-card-summary'; summary.hidden = true;
         const footer = doc.createElement('div'); footer.className = 'aim-card-footer';
         const chips = doc.createElement('div'); chips.className = 'aim-card-chips';
-        const preview = doc.createElement('button'); preview.type = 'button'; preview.className = 'aim-card-preview'; preview.textContent = 'Preview';
+        const preview = doc.createElement('button'); preview.type = 'button'; preview.className = 'aim-card-preview';
+        preview.append(hubIcon(doc,'eye'),doc.createTextNode('Preview'));
         preview.setAttribute('aria-haspopup','dialog'); preview.setAttribute('aria-expanded','false');
         footer.append(chips,preview); details.append(summary,footer); card.append(details);
         state = {file,details,summary,chips,preview}; entry.boardCards.set(card,state);
@@ -629,7 +704,9 @@ class AIMultipleKanbanExtras extends Plugin {
         for (const [key,label] of [['priority',model.priority],['category',model.type]]) {
           if (!label) continue;
           const chip = doc.createElement('button'); chip.type = 'button'; chip.className = 'aim-card-chip';
-          chip.textContent = label; chip.dataset.property = key;
+          const icon = key === 'category' ? model.typeIcon : PRIORITY_ICONS[model.priorityValue];
+          if (icon) chip.append(hubIcon(doc,icon, key === 'priority' ? 'aim-card-priority-icon' : ''));
+          chip.append(homeElement(doc,'span','aim-card-chip-label',label)); chip.dataset.property = key;
           if (key === 'priority' && model.priorityValue) chip.dataset.priority = model.priorityValue;
           chip.title = key === 'category' ? 'Type: ' + label + '. Choosing a Type moves this note to its Hub folder.' : 'Priority: ' + label;
           chip.setAttribute('aria-label',NOTE_FIELDS[key] + ': ' + label);
@@ -820,6 +897,7 @@ class AIMultipleKanbanExtras extends Plugin {
       entry.customize.setAttribute('aria-expanded', String(!entry.config.hidden));
     }, 'aim-home-text-button');
     entry.customize.setAttribute('aria-expanded', 'false');
+    entry.customize.prepend(hubIcon(doc,'sliders-horizontal'));
     headerActions.append(entry.customize, entry.homeToggle);
     header.append(heading, headerActions);
     entry.config = el('div', 'aim-home-config'); entry.config.hidden = true;
@@ -831,6 +909,13 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.boardControlsToggle = button('', () => this.setBoardControlsVisible(entry, !entry.boardControlsVisible), 'aim-home-board-controls-toggle');
     entry.boardControlsLabel = entry.boardControlsToggle;
     entry.config.append(entry.boardControlsToggle);
+    const typeSettings = el('details','aim-type-icon-settings');
+    typeSettings.append(el('summary','','Type icons'));
+    typeSettings.append(el('p','aim-type-icon-help','Choose an icon for each Type. Labels stay visible. Unconfigured folders use the default folder icon.'));
+    entry.typeIconRows = el('div','aim-type-icon-rows');
+    entry.typeIconMessage = el('p','aim-type-icon-message'); entry.typeIconMessage.setAttribute('role','status');
+    typeSettings.append(entry.typeIconRows,entry.typeIconMessage); entry.config.append(typeSettings);
+    this.updateTypeIconControls(entry);
     this.setBoardControlsVisible(entry, false);
     entry.homeGrid = el('div', 'aim-home-grid');
     entry.homeResize = el('div', 'aim-home-resize');
@@ -858,6 +943,7 @@ class AIMultipleKanbanExtras extends Plugin {
     mainTabs.setAttribute('role','tablist'); mainTabs.setAttribute('aria-label','Calendar and Mail');
     for (const [id,label] of [['calendar','Calendar'],['mail','Mail']]) {
       const control = button(label,() => this.setHomePanel(entry,id));
+      control.prepend(hubIcon(doc,id === 'calendar' ? 'calendar-days' : 'mail'));
       control.id = `${panelId}-${id}-tab`; control.setAttribute('role','tab');
       control.setAttribute('aria-controls',`${panelId}-${id}`);
       control.addEventListener('keydown',event => {
@@ -925,7 +1011,8 @@ class AIMultipleKanbanExtras extends Plugin {
     const youtrack = tile('aim-home-youtrack-tile', 'Your YouTrack issues');
     entry.widgets.youtrack = youtrack;
     const youtrackHead = el('div', 'aim-home-tile-heading');
-    youtrackHead.append(el('h3', '', 'YouTrack'));
+    const youtrackTitle = el('h3', '', 'YouTrack'); youtrackTitle.prepend(hubIcon(doc,'list-todo'));
+    youtrackHead.append(youtrackTitle);
     entry.youtrackCount = el('span', 'aim-home-caption'); youtrackHead.append(entry.youtrackCount);
     entry.youtrackList = el('div', 'aim-home-youtrack-list');
     entry.youtrackStatus = el('span', 'aim-home-caption');
@@ -947,7 +1034,8 @@ class AIMultipleKanbanExtras extends Plugin {
     const slackHead = el('div', 'aim-home-tile-heading');
     entry.slackRefresh = button('Refresh', () => this.refreshSlack(), 'aim-home-text-button');
     entry.slackRefresh.setAttribute('aria-label', 'Refresh Slack inbox');
-    slackHead.append(el('h3', '', 'Slack · Inbox'), entry.slackRefresh);
+    const slackTitle = el('h3', '', 'Slack · Inbox'); slackTitle.prepend(hubIcon(doc,'messages-square'));
+    slackHead.append(slackTitle, entry.slackRefresh);
     entry.slackCount = el('span', 'aim-home-caption');
     const slackFilters = el('div', 'aim-home-slack-filters'); slackFilters.setAttribute('aria-label', 'Filter Slack inbox');
     entry.slackFilter = 'all'; entry.slackFilters = new Map();
@@ -1005,6 +1093,7 @@ class AIMultipleKanbanExtras extends Plugin {
 
   updateHome(entry) {
     if (!entry.home || !this.active) return;
+    this.updateTypeIconControls(entry);
     const layoutKey = JSON.stringify([this.homeCollapsed,this.homeModules]);
     const layoutChanged = entry.homeLayoutKey !== layoutKey;
     entry.moduleScroll ||= new Map();
@@ -4060,7 +4149,8 @@ class NotePropertyPopover {
     const values = this.plugin.propertyValues(this.key);
     if (values) {
       for (const value of values.filter(matches)) {
-        this.option(value, () => this.act(() => this.plugin.setNoteProperty(this.file, this.key, value), true), { selected: (this.key === "category" ? this.plugin.categoryValue(fm[this.key]) : fm[this.key]) === value });
+        const option = this.option(value, () => this.act(() => this.plugin.setNoteProperty(this.file, this.key, value), true), { selected: (this.key === "category" ? this.plugin.categoryValue(fm[this.key]) : fm[this.key]) === value });
+        if (this.key === 'category') option.prepend(hubIcon(this.doc,this.plugin.typeIcon(value)));
       }
       if (Object.hasOwn(fm, this.key) && !(this.key === "board_column" && fileHasKanbanTag(cache))) {
         this.option("Clear value", () => this.act(() => this.plugin.setNoteProperty(this.file, this.key, undefined), true));
@@ -4656,6 +4746,16 @@ function homeElement(doc, tag, className = '', text = '') {
   const node = doc.createElement(tag); node.className = className; node.textContent = text; return node;
 }
 
+function typeIconsFromSettings(settings) {
+  const value = settings?.typeIcons;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([type,icon]) =>
+    type && !type.includes('/') && typeof icon === 'string' && Object.hasOwn(TYPE_ICONS,icon)));
+}
+function hubIcon(doc, name, extraClass = '') {
+  const icon = doc.createElement('span'); icon.className = 'aim-ui-icon' + (extraClass ? ' ' + extraClass : '');
+  icon.setAttribute('aria-hidden','true'); icon.setAttribute('data-icon',name); setIcon(icon,name); return icon;
+}
 function boardBody(text) { return String(text || '').replace(/^\uFEFF?---[ \t]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/,'').trim(); }
 function boardFileStamp(file) { return [file.path,file.stat.mtime,file.stat.size].join(':'); }
 function boardSearchText(text) { return String(text || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/ı/g,'i'); }
