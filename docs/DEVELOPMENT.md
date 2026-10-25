@@ -45,10 +45,16 @@ Source **1.2.0** is prepared on `feat/board-ui-preview`, based on the published 
 
 Implemented: compact Priority/Type controls and optional next-step excerpts; temporary title/path/issue-ID search combined with live Type filtering; a bounded read-only Preview panel with Open note. Public account defaults and State-sync opt-in are preserved. [Verification](VERIFICATION.md) owns the evidence. [UI research](UI-RESEARCH.md) records recommendations and version checks for icons/colors; those plugins were researched, not installed.
 
-GitHub delivery of this branch and its PR is requested. This handoff is saved before that delivery; verify the remote branch, PR and checks for its actual head before resuming. No merge, tag or public release is included in the delivery request. The latest published download remains 1.1.0.
+The requested branch and PR delivery is complete. On 25 October 2026 at 18:53 UTC, [PR #1](https://github.com/sariekr/es-obsidian-hub/pull/1) was open and mergeable, with head `39acbe5ecdb1ee5ef5c04ac05bc643d31496a069` matching the clean local checkout. The remote `main` remained at `3c1c93561991654ab6d7635a6e93e239dffcea21`. Both GitHub check runs succeeded. The [pull-request run](https://github.com/sariekr/es-obsidian-hub/actions/runs/40223087408) identifies that exact head and passed the Node/Python suites, pristine checker, distribution tests and release build. No submitted review or PR comment was present.
+
+A focused source review of the cards, combined filters, preview rendering and cleanup found no blocking defect. The local pristine checker also passed before this handoff update. Existing browser/native evidence remains in [Verification](VERIFICATION.md); those checks were not repeated during this continuation review. The follow-up changes only the handoff and its distribution hash.
+
+On 25 October 2026, the user authorized continuing with the PR merge. This checkpoint is saved before delivering the handoff update and completing that merge; use PR #1's live state and current-head checks to verify the outcome. Tags, a public 1.2.0 release and additional UI prototypes remain separate decisions. The latest published download at this checkpoint is [v1.1.0](https://github.com/sariekr/es-obsidian-hub/releases/tag/v1.1.0).
 
 ## Next steps
 
-Review the PR for `feat/board-ui-preview` and its current-head checks before merging. Then decide whether to prototype theme color controls and built-in Lucide icons in the disconnected demo. Additional plugin installation and a public 1.2.0 release remain separate decisions.
+Check PR #1's live merge state. If it is still open, complete the authorized merge after the final-head checks pass. Once merged, synchronize local main and decide whether to prototype theme colors and built-in Lucide icons in the disconnected demo.
+
+Additional plugin installation and a public 1.2.0 release remain separate decisions. Do not repeat a completed merge or reopen the delivered feature work solely because this pre-merge checkpoint still names its branch.
 
 Continue in this development checkout, reading AGENTS.md, this section, VERIFICATION.md and UI-RESEARCH.md. Use the existing demo for native checks. Do not re-copy the personal plugin wholesale or overwrite any personal notes/settings. Stable passing checks above need no repeat unless the relevant code changes.
