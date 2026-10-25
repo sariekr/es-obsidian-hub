@@ -13,7 +13,7 @@
 | A Done card disappears later | The main Board hides cards seven days after completion. Find them with **Customize → Show board controls → By Status**. Their files are not deleted. |
 | Columns look narrow or scroll sideways | Narrow panels scroll widgets horizontally. Enlarge the window or drag the widget separator upward. Visible card count depends on window height. |
 | Mail is missing | Update the complete Extras runtime to 1.1.0, including `scripts/read-mail.applescript`, and reload the plugin. Select the Mail tab in the left tile. |
-| Mail access was not allowed | Enable Obsidian → Mail under System Settings → Privacy & Security → Automation, then explicitly retry Connect or Refresh. |
+| Mail access was not allowed | Enable Obsidian → Mail under System Settings → Privacy & Security → Automation, then explicitly retry Connect or **Refresh all widgets** (1.4.0 source). |
 | Mail refresh times out or cannot identify an inbox | Open Apple Mail and let it finish syncing. Every enabled account must expose exactly one supported top-level inbox; see the connection guide. The previous successful list remains visible. |
 | Mail unread count differs from Apple Mail | Unread filters the bounded inbox sample; it is not a total unread counter. |
 | YouTrack reports a Python error | Run `python3 scripts/check-setup.py`. The first existing `/opt/homebrew/bin/python3` or `/usr/local/bin/python3` must be 3.11+. |

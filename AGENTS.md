@@ -2,7 +2,7 @@
 
 This repository is a redistributable **starter Obsidian vault for macOS**, not the maintainer's personal vault. Read README.md, docs/CONNECTIONS.md and docs/VERIFICATION.md first. The primary user is new to Obsidian. Keep the UI in English and explain setup in the user's language.
 
-Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.3.0 adds configurable Type icons and restrained priority colors to the 1.2.0 compact cards, temporary filters and read-only Preview. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) separates plugin research from the implemented built-in icons; no additional plugin is bundled or enabled.
+Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next-steps). Source 1.4.0 adds a symmetric widget frame, grouped lists, one Refresh all widgets action and visible-view automatic reads. [docs/DESIGN.md](docs/DESIGN.md) owns shared UI geometry, typography and color rules; follow it for widget changes. [docs/UI-RESEARCH.md](docs/UI-RESEARCH.md) separates plugin research from the implemented built-in icons; no additional plugin is bundled or enabled.
 
 ## Install for a new user
 
@@ -18,6 +18,7 @@ Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next
 ## Account boundaries
 
 - Mail is macOS-only and disconnected by default. Use existing Apple Mail accounts through the bundled `scripts/read-mail.applescript`; do not request mail passwords or copy account/message metadata into a release. Store only the enabled preference in device-local browser storage under `es-hub:mail-enabled:`. Auto reads require the visible Mail tab; disconnect/unload cancels processes and clears RAM. Opening a row is the only message action and may mark it read in Apple Mail. Keep argument-array execution, identity checks, safe errors, 90-second/4-MiB bounds and the inbox/account limits.
+- Automatic reads require a visible Home/module: Calendar and Mail every ten minutes on their active tab, YouTrack every six hours, Slack every five minutes. Manual **Refresh all widgets** also reads connected hidden modules/inactive tabs, skips setup changes, and isolates failures. Preserve busy guards, Mail permission suppression, Slack cooldowns and unload cleanup. Hide/Show widgets lives inside Customize.
 - Calendar and Mail share the fixed left tile, with Calendar → Month initially. Tabs retain mounted panels, filters and scroll without settings writes. Visibility changes save `homeLayoutVersion: 2`; startup does not write. Preserve the public fork’s configurable integrations and default-off YouTrack State sync when porting code.
 
 - Google OAuth reads the primary calendar only, using `calendar.events.owned.readonly`. The private-iCal fallback must use a Secret address, never require a public calendar. Each Mac connects separately.
@@ -25,7 +26,7 @@ Current continuation: [docs/DEVELOPMENT.md, Next steps](docs/DEVELOPMENT.md#next
 - YouTrack host/login/project/state mapping and token are device-local Keychain data under `es-hub-youtrack`. The standard-library Python helper receives a bounded JSON payload on stdin and never reads Codex or Claude configuration. It sends HTTPS only to the configured hostname and rejects credential-bearing URLs/redirects.
 - YouTrack uses the built-in MCP tool schema and projects with scalar `Assignee`, `State` and `Priority` fields. Custom multi-assignee or field schemas require explicit adapter work and behavioral tests; do not weaken identity/ownership checks. Current login/project/host syntax is documented in CONNECTIONS.md. Only one project/account per vault is supported.
 - State sync is **off by default**. Enable it only at the user's request in the native setup dialog. Imports and moves then change only the mapped State after identity/ownership/schema checks and independent read-back. Startup never bulk-syncs, and uncertain writes never replay automatically. Do not use a real issue as a QA fixture.
-- Imported files carry `youtrack_import: local-v1`, `youtrack_id`, `youtrack_url` and `youtrack_assignee`. Keep these fields. They bind the note to the configured account/host; duplicate or mismatched IDs fail visibly. Refresh never rewrites imported notes. Never add a background mirror/scheduler.
+- Imported files carry `youtrack_import: local-v1`, `youtrack_id`, `youtrack_url` and `youtrack_assignee`. Keep these fields. They bind the note to the configured account/host; duplicate or mismatched IDs fail visibly. Refresh never rewrites imported notes. Visible Home may refresh this snapshot every six hours; never add a background note mirror, daemon or automatic State-write scheduler.
 - Slack/Google tokens, YouTrack token/profile, Scratchpad recovery, saved-note receipt and widget-height preferences are device-local. YouTrack's snapshot and explicitly imported notes/attachments are files and may travel with a vault copy. Never assume Keychain transferred.
 
 ## Code map and behavior to preserve

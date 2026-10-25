@@ -26,7 +26,7 @@ If an "Unknown view type" screen lingers after first trust, ES Hub reopens that 
 
 ## Try it in two minutes
 
-The card filters, Preview and configurable Type icons below are available in the **1.3.0 source checkout**. The current release ZIP remains **1.1.0**.
+The card filters, Preview, configurable Type icons and shared widget refresh below are available in the **1.4.1 source checkout**. The current release ZIP remains **1.1.0**.
 
 | What you want to do | Where to click |
 | --- | --- |
@@ -39,10 +39,13 @@ The card filters, Preview and configurable Type icons below are available in the
 | Change status, priority, type or tags | Use **Status / Priority / Type / Tags** above the note, or right-click a card. |
 | Wrap a note in its own folder | **Make a folder** creates a containing folder and moves the note into it. |
 | Delete a note | The separate **Delete note** action uses Obsidian's confirmation and trash flow. |
-| Resize or hide widgets | Drag their shared separator, choose widgets in **Customize**, or use **Hide widgets**. Scratchpad stays visible. |
+| Resize or hide widgets | Drag their shared separator, choose widgets in **Customize**, or use **Customize → Hide widgets**. Scratchpad stays visible. |
+| Refresh connected widgets | **Refresh all widgets** beside Customize reads all connected sources, including inactive Calendar/Mail tabs. |
 | Choose Type icons | **Customize → Type icons** lists your current Hub folders. Choose an icon beside each name; **Folder (default)** resets it. |
 
 Cards show compact Priority and Type controls. A note with a **Next step** or **Sonraki adım** heading can show a one-line excerpt; notes without that section stay compact. Filters are temporary and do not change the saved Base query or column/WIP totals.
+
+Widgets share aligned headers, filters and two-line footers. Mail and Slack group messages by date; YouTrack groups issues by their actual State. The [design language](docs/DESIGN.md) keeps font roles, spacing and colors consistent.
 
 Type icons keep their text labels. Priority has its own symbol and label; only High and Urgent add a small color accent. Completed cards keep readable controls and a struck-through title. No extra icon plugin is required.
 
@@ -82,9 +85,9 @@ Keep `Hub`, `Kanban Board.base`, `Quick Notes`, `Attachments`, `_kanban` and `_p
 
 Follow the **[account connection guide](docs/CONNECTIONS.md)**. The board, note tools, Scratchpad, Calendar, Mail and Slack need no separate Python, Node or npm installation. YouTrack requires Python. Codex, Claude and a separate MCP client are not required. The helper connects directly to your YouTrack server's MCP endpoint.
 
-YouTrack **remote status sync starts off**. If you enable it, moving an imported card changes the remote issue's **State**. Moving out of Done can reopen it. You choose the three State mappings. Startup never bulk-syncs existing cards. **Refresh** reads the list without changing issues.
+YouTrack **remote status sync starts off**. If you enable it, moving an imported card changes the remote issue's **State**. Moving out of Done can reopen it. You choose the three State mappings. Startup never bulk-syncs existing cards. **Refresh all widgets** reads the list without changing issues.
 
-Mail uses the accounts already enabled in Apple Mail. There is no mail token to create. The Calendar / Mail tile opens on Calendar → Month. Each tab keeps its view and scroll during the session.
+Mail uses the accounts already enabled in Apple Mail. There is no mail token to create. The Calendar / Mail tile opens on Calendar → Month. Each tab keeps its view and scroll during the session. Visible Calendar and Mail refresh about every **10 minutes**; visible YouTrack reads its snapshot every **6 hours**; Slack stays at **5 minutes**. Hidden widgets defer automatic reads. The common refresh button waits for all sources and keeps previous results when one fails.
 
 ## Privacy and updates
 
@@ -107,6 +110,6 @@ Do not ask me to paste tokens or OAuth JSON into chat.
 
 ## Version and contributions
 
-Source version: **1.3.0**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. The 1.3.0 source adds configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
+Source version: **1.4.1**. Latest published starter release: **1.1.0**; the download link above still points to that release until a new release is explicitly published. Version 1.4.1 separates Calendar date badges and meeting markers to prevent overlap. The 1.4.0 source adds aligned widget headers/footers, grouped lists, shared refresh and automatic read intervals. Version 1.3.0 added configurable Type icons and restrained priority colors to the compact cards, board filters and note previews introduced in 1.2.0. Prepared for macOS desktop. Windows, Linux and mobile are outside this release's verification scope. Install this bundled starter vault from the release ZIP. It is unavailable in the community plugin store.
 
 See [verification](docs/VERIFICATION.md), [development workflow and handoff](docs/DEVELOPMENT.md), [icon and color research](docs/UI-RESEARCH.md), [maintenance instructions](AGENTS.md) and [third-party notices](THIRD-PARTY-NOTICES.md). ES Hub code and starter documentation are MIT licensed. Third-party components keep their own licenses.

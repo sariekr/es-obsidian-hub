@@ -61,6 +61,11 @@ checks=r'''
   };
   const notes=f.files.size;
   verify(document.querySelectorAll('.aim-home-tile').length===3,'three widget modules');
+  const initial=[...p.toolbars.values()].find(e=>e.home?.isConnected);
+  verify(initial.widgetsRefresh.closest('.aim-home-heading-actions'),'one refresh in header');
+  verify(initial.homeToggle.closest('.aim-home-config'),'Hide widgets moved into Customize');
+  verify(!document.querySelector('.aim-home-grid button[aria-label^="Refresh"]'),'no per-widget refresh buttons');
+  verify(![...document.querySelectorAll('.aim-home-grid button')].some(x=>x.textContent==='Refresh'),'no unlabeled per-widget refresh');
   verify(!document.querySelector('.aim-home-recent-strip')&&!document.querySelector('.aim-home-scratchpad-tile'),'Recent and Scratchpad tile removed');
   verify(document.querySelector('.aim-home-heading .aim-home-scratch-bar textarea'),'Scratchpad in header');
   verify(document.querySelectorAll('.obk-column').length===3,'three kanban columns');
@@ -88,9 +93,16 @@ checks=r'''
   verify(f.requests.length===callsBeforeFilter,'source filters use retained results without requests');
   filter('All').click();f.crowdedSlack=false;await p.refreshSlack();await settle();
   verify(!document.querySelector('.aim-home-slack-list script'),'render escaped text safely');
+  const slackEntry=[...p.toolbars.values()].find(e=>e.home?.isConnected);
+  verify(slackEntry.slackList.querySelector('.aim-widget-group')?.textContent==='Today','Slack date group');
+  const slackRow=slackEntry.slackList.querySelector('.aim-home-slack-mention');
+  verify(slackRow.children[1].classList.contains('aim-home-slack-text')&&slackRow.lastElementChild.classList.contains('aim-home-slack-channel'),'Slack sender/message/context order');
+  slackEntry.slackList.scrollTop=50;const slackScroll=slackEntry.slackList.scrollTop;
+  await p.refreshSlack();verify(slackEntry.slackList.scrollTop===slackScroll,'Slack refresh preserves scroll');
+  filter('DMs').click();verify(slackEntry.slackList.scrollTop===0,'Slack changed filter starts at top');filter('All').click();
   verify(f.files.size===notes && Object.keys(f.saved).length===0,'no note or settings writes');
   const snapshot=p.slackSnapshot;f.failSlack=true;
-  document.querySelector('[aria-label="Refresh Slack inbox"]').click();await settle();
+  [...p.toolbars.values()].find(e=>e.home?.isConnected).widgetsRefresh.click();await settle();
   verify(p.slackSnapshot===snapshot && !document.querySelector('.aim-home-slack-message').hidden,'retain data and show error');f.failSlack=false;
   p.openSlackSetup();f.pauseSlack=true;f.modal.input.value=token;
   [...f.modal.contentEl.querySelectorAll('button')].find(x=>x.textContent==='Replace connection').click();await settle();
@@ -106,7 +118,7 @@ checks=r'''
   verify(f.plugin.autoRefreshSlack(),'due visible inbox auto refresh starts');
   verify(!f.plugin.autoRefreshSlack(),'automatic refresh does not overlap');await settle();
   verify(f.plugin.slackSnapshot!==previousAutoSnapshot,'automatic refresh publishes a new snapshot');
-  verify(document.querySelector('.aim-home-slack-footer').textContent.includes('Auto 5m'),'automatic refresh status');
+  verify(document.querySelector('.aim-home-slack-tile .aim-widget-footer').textContent.includes('Auto 5m'),'automatic refresh status');
   // Exercise the moved controls through their DOM listeners with synthetic notes only.
   const q=f.plugin, input=document.querySelector('.aim-home-scratch-input'),save=document.querySelector('[aria-label="Save to Quick Notes"]');
   const latest=[...document.querySelectorAll('.aim-home-scratch-actions button')].find(x=>x.textContent==='Open latest note');
@@ -132,7 +144,7 @@ checks=r'''
   verify(f.plugin.quickDraft.lastSaved===savedPath,'latest saved note survives reload');
   f.plugin.editQuickDraft('');await f.plugin.setHomeCollapsed(false);await f.plugin.refreshSlack();await settle();
   // Actual Calendar/Mail tabs, using only synthetic message metadata.
-  const w=f.plugin;w.mailSupported=()=>true;
+  const w=f.plugin;w.mailSupported=()=>true;w.refreshHomes();
   const mailData={schema:1,accounts:Array.from({length:7},(_,i)=>({id:'account-'+i,name:['Work','Personal','University','Research','Projects','Alumni','Family'][i],limited:true})),
     rows:Array.from({length:84},(_,i)=>({id:i+1,accountId:'account-'+(i%7),mailbox:'INBOX',messageId:'demo-'+i+'@example.test',
       subject:i===0?'<script>Literal subject</script>':['Review notes for tomorrow’s meeting','Your weekly reading list is ready','Updated schedule for the autumn semester'][i%3],
@@ -152,6 +164,7 @@ checks=r'''
   verify(mailReads===0,'no reads before Connect');
   home.mailConnect.click();await settle();
   verify(w.mailEnabled&&mailReads===1&&home.mailList.querySelectorAll('button').length===50,'connect reads and renders bounded list');
+  verify(home.mailList.querySelectorAll('.aim-widget-group').length>=2&&home.mailList.querySelector('.aim-widget-group').textContent==='Today','Mail groups across midnight');
   verify(!home.mailList.querySelector('script')&&home.mailList.textContent.includes('<script>Literal subject</script>'),'Mail subjects rendered as text');
   home.mailFilters.get('unread').click();verify(home.mailList.querySelectorAll('button').length===28,'Unread filters loaded rows');
   home.mailAccountSelect.value='account-2';home.mailAccountSelect.dispatchEvent(new Event('change'));
@@ -159,12 +172,12 @@ checks=r'''
   home.mailList.querySelector('button').click();await settle();verify(mailOpens===1,'explicit row opens exact message');
   home.mailFilters.get('all').click();home.mailAccountSelect.value='';home.mailAccountSelect.dispatchEvent(new Event('change'));
   const good=w.mailSnapshot;w.fetchMailSnapshot=async()=>{throw Error('private raw failure');};
-  home.mailRefresh.click();await settle();verify(w.mailSnapshot===good&&!home.mailMessage.hidden&&!home.mailMessage.textContent.includes('private raw'),'failed refresh keeps list and safe error');
+  home.widgetsRefresh.click();await settle();verify(w.mailSnapshot===good&&!home.mailMessage.hidden&&!home.mailMessage.textContent.includes('private raw'),'failed refresh keeps list and safe error');
   w.fetchMailSnapshot=async()=>structuredClone(mailData);await w.refreshMail();await settle();
   home.mailList.scrollTop=80;const savedScroll=home.mailList.scrollTop;
   home.mailFilters.get('unread').click();const selectedFilter=home.mailFilter;
   home.calendarMainTab.click();await settle();
-  verify(!home.calendarPanel.hidden&&home.mailPanel.hidden&&home.mailRefresh.hidden,'Calendar restores its own content and controls');
+  verify(!home.calendarPanel.hidden&&home.mailPanel.hidden,'Calendar restores its own content and controls');
   verify(home.selectedDay===selectedDay&&home.calendarMonth===month&&home.calendarMode===mode,'Calendar view survives Mail');
   home.calendarMainTab.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));
   verify(home.homePanel==='mail'&&document.activeElement===home.mailMainTab,'arrow key switches and focuses Mail');
@@ -185,11 +198,113 @@ checks=r'''
   await r.refreshMail();await settle();
   await r.setHomeCollapsed(true);await settle();verify(document.querySelector('.aim-home-grid').hidden,'Hide widgets hides grouped tile');
   await r.setHomeCollapsed(false);await settle();
+  const finalHome=[...r.toolbars.values()].find(e=>e.home?.isConnected);
+  const methods=['refreshCalendar','refreshMail','refreshYouTrack','refreshSlack'],originalMethods=methods.map(name=>r[name]);
+  const previousCalendar=r.calendarEnabled,previousSlack=r.slackConnected,previousYouTrack=r.youtrackProfile;
+  r.calendarEnabled=true;r.slackConnected=true;r.youtrackProfile={host:'tracker.example.com',project:'DEMO',login:'Alex'};finalHome.youtrackKey=null;const completed={},refreshCalls=[];
+  for(const method of methods)r[method]=()=>{refreshCalls.push(method);return new Promise(resolve=>completed[method]=resolve);};
+  const fileCount=f.files.size,settingsBefore=JSON.stringify(f.saved);
+  finalHome.widgetsRefresh.click();await settle();
+  verify(finalHome.widgetsRefresh.disabled&&finalHome.widgetsRefresh.textContent.includes('Refreshing'),'busy label and disabled state');
+  finalHome.widgetsRefresh.click();await settle();verify(refreshCalls.length===4,'one read per connected widget, including hidden Mail');
+  for(const method of methods.slice(0,3))completed[method]();await settle();verify(finalHome.widgetsRefresh.disabled,'wait for last widget');
+  completed.refreshSlack();await settle();verify(!finalHome.widgetsRefresh.disabled,'refresh re-enabled');
+  verify(f.files.size===fileCount&&JSON.stringify(f.saved)===settingsBefore,'Refresh all never writes notes or settings');
+  methods.forEach((name,i)=>r[name]=originalMethods[i]);r.calendarEnabled=previousCalendar;r.slackConnected=previousSlack;r.refreshHomes();
+  finalHome.customize.click();await settle();verify(!finalHome.config.hidden,'Customize opens');
+  finalHome.homeToggle.click();await settle();verify(finalHome.homeGrid.hidden,'Hide widgets remains available');
+  finalHome.homeToggle.click();await settle();verify(!finalHome.homeGrid.hidden,'Show widgets restores row');finalHome.customize.click();await settle();
+  verify(finalHome.mailStatus.textContent.includes('Auto 10m')&&finalHome.youtrackStatus.textContent.includes('Auto 6h'),'new interval labels');
+  r.youtrackProfile=previousYouTrack;finalHome.youtrackKey=null;r.refreshHomes();
+  verify(finalHome.youtrackStatus.textContent==='Not connected','disconnected YouTrack has no automatic-read claim');
+  r.slackConnected=true;r.slackAccount={teamName:'Demo workspace',userName:'demo'};
+  r.slackSnapshot={fetchedAt:Date.now(),rows:Array.from({length:12},(_,i)=>({author:'Demo colleague',time:Date.now()-i*10800000,text:['Could you review the launch checklist before our meeting?','The updated project notes are ready.'][i%2],channel:'#team-notes',sources:['mention'],url:'https://demo.slack.com/archives/CDEMO/p'+i}))};
+  r.youtrackProfile={host:'tracker.example.com',project:'DEMO',login:'Alex'};
+  r.youtrackSnapshot={schema:1,source:'YouTrack MCP',assignee:'Alex',fetchedAt:new Date().toISOString(),issues:[
+   ['DEMO-42','Prepare the launch checklist','In Progress','High'],
+   ['DEMO-38','Review the onboarding copy','To do','Normal'],
+   ['DEMO-36','Document the export flow','In Progress','Normal']
+  ].map(([id,title,state,priority])=>({id,title,state,priority,assignee:'Alex',url:'https://tracker.example.com/issue/'+id}))};
+  r.refreshHomes();
+  verify([...finalHome.youtrackList.querySelectorAll('.aim-widget-group')].map(x=>x.textContent).join('|')==='In Progress|To do','YouTrack uses actual State labels');
+  verify([...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].map(x=>x.dataset.youtrackId).join('|')==='DEMO-42|DEMO-36|DEMO-38','State grouping retains in-group order and identities');
+  verify([...finalHome.youtrackList.querySelectorAll('.aim-home-issue')].every(x=>x.draggable&&x.href.endsWith(x.dataset.youtrackId)),'grouped issues keep drag/open actions');
   const grid=document.querySelector('.aim-home-grid'),tiles=[...document.querySelectorAll('.aim-home-tile')];
   verify(new Set(tiles.map(x=>Math.round(x.getBoundingClientRect().height))).size===1,'equal widget heights');
   if(query.has('narrow')||query.has('compact'))verify(grid.scrollWidth>grid.clientWidth,'narrow row scrolls horizontally');
   verify(document.documentElement.scrollWidth<=innerWidth,'no viewport overflow');
-  status.textContent='PASS · Calendar/Mail tabs, Scratchpad and Slack · Synthetic data';document.title='PASS · Slack Home fixture';
+  const checkFrame=label=>{
+   const visible=selector=>tiles.map(tile=>[...tile.querySelectorAll(selector)].find(node=>node.getClientRects().length));
+   for(const selector of ['.aim-widget-header','.aim-widget-controls','.aim-widget-body','.aim-widget-footer']){
+    const nodes=visible(selector);verify(nodes.every(Boolean),label+' shared '+selector);
+    for(const edge of ['top','bottom']){
+     const values=nodes.map(node=>node.getBoundingClientRect()[edge]);
+     verify(Math.max(...values)-Math.min(...values)<=1,label+' aligned '+selector+' '+edge);
+    }
+   }
+   for(const selector of ['.aim-widget-footer','.aim-widget-header']){
+    verify(new Set(visible(selector).map(node=>getComputedStyle(node).fontFamily)).size===1,label+' common font '+selector);
+   }
+  };
+  checkFrame('Mail');
+  const titles=tiles.map(tile=>tile.querySelector('.aim-widget-header h3,.aim-widget-header button'));
+  for(const role of ['fontFamily','fontSize','fontWeight','lineHeight'])verify(new Set(titles.map(n=>getComputedStyle(n)[role])).size===1,'title typography '+role);
+  const senderStyles=['.aim-home-mail-sender','.aim-home-slack-author','.aim-home-note-name'].map(sel=>getComputedStyle(finalHome.home.querySelector(sel)));
+  for(const role of ['fontFamily','fontSize','fontWeight','lineHeight'])verify(new Set(senderStyles.map(s=>s[role])).size===1,'row title typography '+role);
+  verify(getComputedStyle(finalHome.home.querySelector('.aim-home-mail-subject')).lineHeight===getComputedStyle(finalHome.home.querySelector('.aim-home-slack-text')).lineHeight,'Mail/Slack excerpt line height');
+  r.setHomePanel(finalHome,'calendar');checkFrame('Calendar');
+  finalHome.calendarMode='agenda';r.updateHome(finalHome);checkFrame('Agenda');
+  finalHome.calendarMode='month';r.updateHome(finalHome);
+  const beforeHeight=r.homeWidgetHeight;
+  r.homeWidgetHeight=300;
+  finalHome.calendarMonth='2026-08';r.updateHome(finalHome);checkFrame('six-week minimum');
+  r.mailError=r.slackError=r.youtrackRefreshError='Synthetic long error. '.repeat(16);
+  r.refreshHomes();checkFrame('long errors');r.setHomePanel(finalHome,'mail');checkFrame('Mail error');
+  r.mailError=r.slackError=r.youtrackRefreshError='';r.refreshHomes();
+  r.slackAccount={...r.slackAccount,teamName:'A very long fictional workspace name to test clipping',userName:'demo'};
+  r.slackSources={channel:'team-notes',group:'builders'};r.refreshHomes();checkFrame('long context');
+  r.mailBusy=r.slackBusy=r.youtrackBusy=true;r.refreshHomes();checkFrame('busy');
+  r.mailBusy=r.slackBusy=r.youtrackBusy=false;r.refreshHomes();
+  for(const [token,value] of [['--font-ui-small','16px'],['--font-ui-medium','18px'],['--font-ui-smaller','14px']])finalHome.home.style.setProperty(token,value);
+  checkFrame('larger fonts');
+  for(const token of ['--font-ui-small','--font-ui-medium','--font-ui-smaller'])finalHome.home.style.removeProperty(token);
+  r.homeWidgetHeight=beforeHeight;r.applyHomeWidgetHeight(finalHome);
+  verify(f.files.size===fileCount&&JSON.stringify(f.saved)===settingsBefore,'grouping and geometry checks never write notes/settings');
+  // Meeting markers must occupy their own line, including a selected day at minimum height.
+  const markerMonths=['2026-10','2027-02','2026-08'];
+  const markerEvents=month=>[2,3,4,26].flatMap(day=>Array.from({length:day===2?1:day===3?2:day===4?4:3},(_,i)=>({
+   uid:`fixture-${month}-${day}-${i}`,summary:'Fictional meeting',
+   start:+new Date(`${month}-${String(day).padStart(2,'0')}T10:00:00`),end:+new Date(`${month}-${String(day).padStart(2,'0')}T11:00:00`)
+  })));
+  r.calendarEnabled=true;r.calendarError='';r.calendarBusy=false;
+  r.calendarCache={months:new Map(markerMonths.map(month=>[month,markerEvents(month)])),stamps:new Map(markerMonths.map(month=>[month,Date.now()])),fetchedAt:Date.now()};
+  r.setHomePanel(finalHome,'calendar');
+  const measuredCalendarHeights=new Set();
+  for(const height of [401,300])for(const month of markerMonths){
+   r.homeWidgetHeight=height;
+   finalHome.calendarMode='month';finalHome.calendarMonth=month;finalHome.selectedDay=month+'-04';r.updateHome(finalHome);
+   const measuredHeight=finalHome.widgets.calendar.getBoundingClientRect().height;
+   verify(Math.abs(measuredHeight-Math.max(300,Math.min(height,r.homeWidgetBounds(finalHome).max)))<=1,'bounded calendar height is rendered');measuredCalendarHeights.add(Math.round(measuredHeight));
+   checkFrame('Calendar markers '+height+' '+month);
+   for(const day of finalHome.calendarDays.querySelectorAll('button')){
+    const box=day.getBoundingClientRect(),number=day.querySelector('.aim-home-day-number').getBoundingClientRect();
+    verify(box.bottom-number.bottom>=8,'meeting markers need clear space below date badge at '+height+' '+month);
+    const markers=day.querySelector('.aim-home-day-markers');verify(markers,'dedicated marker line');
+    const marks=markers.getBoundingClientRect();
+    verify(marks.top-number.bottom>=4-0.1,'date and markers separated');
+    verify(marks.bottom<=box.bottom&&marks.left>=box.left&&marks.right<=box.right,'markers stay inside their day');
+    verify(Math.abs((marks.left+marks.right)-(box.left+box.right))<=1,'marker line centered');
+    verify(markers.getAttribute('aria-hidden')==='true','marker shape does not repeat accessible date');
+   }
+   const buttons=[...finalHome.calendarDays.querySelectorAll('button')];
+   verify(buttons.slice(0,4).map(n=>n.dataset.meetings).join(',')==='0,1,2,3','zero/one/two/capped meeting indicators');
+   verify(buttons[3].getAttribute('aria-label').includes('4 meetings'),'full count remains accessible');
+   if(height===300)verify(finalHome.calendarDays.scrollHeight>finalHome.calendarDays.clientHeight,'short calendar scrolls without shrinking dates');
+  }
+  r.homeWidgetHeight=401;finalHome.calendarMonth='2026-10';finalHome.selectedDay='2026-10-26';r.updateHome(finalHome);
+  finalHome.calendarDays.querySelector('[data-day="2026-10-04"]').click();verify(finalHome.calendarMode==='agenda'&&finalHome.selectedDay==='2026-10-04','date still opens its agenda');
+  finalHome.calendarMode='month';finalHome.selectedDay='2026-10-26';r.updateHome(finalHome);
+  status.textContent='PASS · Calendar marker spacing ('+[...measuredCalendarHeights].join('/')+'px), aligned frames and interactions · Synthetic data';document.title='PASS · Slack Home fixture';
  } catch(error){status.textContent='FAIL · '+error.message;document.title='FAIL · Slack Home fixture';}
 })();
 '''.replace('ARGS',json.dumps(args).replace('</','<\\/'))

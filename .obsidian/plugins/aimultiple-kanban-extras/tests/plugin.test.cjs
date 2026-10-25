@@ -9,6 +9,125 @@ const taxonomy = JSON.parse(fs.readFileSync(path.join(root, '../../../Hub/_kanba
 Object.assign(taxonomy,{folder_to_category:{Data:'data',MSc:'msc',Personal:'personal',Other:'other'},view_to_folder:{Data:'Hub/Data',MSc:'Hub/MSc',Benchmark:'Hub/Benchmark'}});
 const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate); };
 
+test('Inbox date groups use local calendar days across month and DST boundaries',()=>{
+ const {dateGroup}=fixture();assert.equal(typeof dateGroup,'function');
+ const now=new Date(2026,2,9,0,30),yesterday=new Date(2026,2,8,23,30);
+ assert.equal(dateGroup(now,now).label,'Today');
+ assert.equal(dateGroup(yesterday,now).label,'Yesterday');
+ assert.equal(dateGroup(new Date(2026,1,28,23,59),new Date(2026,2,1,0,1)).label,'Yesterday');
+ assert.equal(dateGroup(new Date(2025,11,31),new Date(2026,0,1)).label,'Yesterday');
+ assert.match(dateGroup(new Date(2025,0,3),now).label,/3 Jan 2025/);
+ assert.notEqual(dateGroup(now,now).key,dateGroup(yesterday,now).key);
+ assert.equal(dateGroup('invalid',now).label,'Date unavailable');
+});
+
+
+function refreshClock() {
+ const clock={now:Date.now()};
+ clock.Date=class extends Date {static now(){return clock.now;}};
+ return clock;
+}
+
+test('The Home timer reaches due automatic reads and unload clears its scheduled callback',async()=>{
+ const clock=refreshClock(),timers=new Map();let timerId=0;
+ const f=fixture([],{}, {Date:clock.Date,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)});
+ await f.start();const p=f.plugin;p.refreshHomes=()=>{};
+ p.toolbars.set({}, {home:{isConnected:true,ownerDocument:{},getClientRects:()=>[{}]},homePanel:'calendar',widgets:{youtrack:{isConnected:true}}});
+ p.calendarEnabled=true;f.secrets.set('es-hub-google-ical','https://calendar.google.com/calendar/ical/example/basic.ics');
+ p.calendarNextRefresh=clock.now+600000;let calendars=0,youtracks=0;
+ p.fetchCalendarFeed=async()=>{calendars++;return {fetchedAt:clock.now,events:[]};};
+ const snapshot={...widgetSnapshot(),fetchedAt:new Date(clock.now).toISOString()};
+ f.app.vault.adapter.read=async()=>JSON.stringify(snapshot);
+ p.fetchYouTrackSnapshot=async()=>{youtracks++;return {...snapshot,fetchedAt:new Date(clock.now).toISOString()};};p.persistYouTrackSnapshot=async()=>{};
+ clock.now+=600000;const tick=timers.get(p.homeTimer);assert.equal(tick.delay,60000);timers.delete(p.homeTimer);tick.fn();await flush();
+ assert.equal(calendars,1);assert.equal(youtracks,0);
+ clock.now+=6*3600000;const next=timers.get(p.homeTimer);timers.delete(p.homeTimer);next.fn();await flush();assert.equal(youtracks,1);
+ const pending=p.homeTimer;p.toolbars.clear();p.unload();assert.equal(timers.has(pending),false);
+});
+
+test('YouTrack auto refresh waits six hours, defers hidden views and shares manual busy state',async()=>{
+ const clock=refreshClock(),f=fixture([],{}, {Date:clock.Date});await f.start();const p=f.plugin;
+ assert.equal(typeof p.autoRefreshYouTrack,'function');p.refreshHomes=()=>{};
+ const entry={home:{isConnected:true,ownerDocument:{visibilityState:'visible'},getClientRects:()=>[{}]},widgets:{youtrack:{isConnected:true}}};
+ p.toolbars.set({},entry);p.youtrackSnapshot={...widgetSnapshot(),fetchedAt:new Date(clock.now).toISOString()};
+ let calls=0,release;p.fetchYouTrackSnapshot=()=>{calls++;return new Promise(r=>release=r);};p.persistYouTrackSnapshot=async()=>{};
+ clock.now+=6*3600000-1;assert.equal(p.autoRefreshYouTrack(),false);
+ clock.now++;const profile=p.youtrackProfile;p.youtrackProfile=null;assert.equal(p.autoRefreshYouTrack(),false);p.youtrackProfile=profile;
+ p.youtrackModal={};assert.equal(p.autoRefreshYouTrack(),false);p.youtrackModal=null;p.youtrackSetupBusy=true;assert.equal(p.autoRefreshYouTrack(),false);p.youtrackSetupBusy=false;
+ p.homeCollapsed=true;assert.equal(p.autoRefreshYouTrack(),false);p.homeCollapsed=false;
+ entry.home.ownerDocument.visibilityState='hidden';assert.equal(p.autoRefreshYouTrack(),false);entry.home.ownerDocument.visibilityState='visible';
+ p.youtrackImports.set('DEMO-1',true);assert.equal(p.autoRefreshYouTrack(),false);p.youtrackImports.clear();
+ assert.equal(p.autoRefreshYouTrack(),true);assert.equal(p.autoRefreshYouTrack(),false);await p.refreshYouTrack();assert.equal(calls,1);
+ release({...widgetSnapshot(),fetchedAt:new Date(clock.now).toISOString()});await flush();
+ assert.equal(p.youtrackNextRefresh,clock.now+6*3600000);assert.equal(p.autoRefreshYouTrack(),false);
+ p.toolbars.clear();p.unload();clock.now+=6*3600000;assert.equal(p.autoRefreshYouTrack(),false);assert.equal(f.saves.length,0);
+});
+
+test('Failed YouTrack auto reads retain the snapshot and wait six hours before retrying',async()=>{
+ const clock=refreshClock(),f=fixture([],{}, {Date:clock.Date});await f.start();const p=f.plugin;
+ assert.equal(typeof p.autoRefreshYouTrack,'function');p.refreshHomes=()=>{};
+ p.toolbars.set({}, {home:{isConnected:true,ownerDocument:{},getClientRects:()=>[{}]},widgets:{youtrack:{isConnected:true}}});
+ const old={...widgetSnapshot(),fetchedAt:new Date(clock.now-7*3600000).toISOString()};p.youtrackSnapshot=old;
+ let calls=0;p.fetchYouTrackSnapshot=async()=>{calls++;throw Error('PRIVATE_FAILURE');};
+ assert.equal(p.autoRefreshYouTrack(),true);await flush();assert.equal(p.youtrackSnapshot,old);
+ clock.now+=60000;assert.equal(p.autoRefreshYouTrack(),false);assert.equal(calls,1);assert.ok(!p.youtrackRefreshError.includes('PRIVATE_FAILURE'));
+ clock.now+=6*3600000;assert.equal(p.autoRefreshYouTrack(),true);await flush();assert.equal(calls,2);p.toolbars.clear();p.unload();
+});
+
+test('Calendar auto refresh waits ten minutes after completion and only runs on its visible tab',async()=>{
+ const clock=refreshClock(),f=fixture([],{}, {Date:clock.Date});await f.start();const p=f.plugin;
+ assert.equal(typeof p.autoRefreshCalendar,'function');const entry=groupedHomeEntry(f);p.refreshHomes=()=>{};
+ p.calendarEnabled=true;p.calendarSource='ical';f.secrets.set('es-hub-google-ical','https://calendar.google.com/calendar/ical/example/basic.ics');
+ // The adapter is stubbed; no token or external request is needed.
+ p.fetchCalendarFeed=async()=>({fetchedAt:clock.now,events:[]});
+ let calls=0;const read=p.refreshCalendar.bind(p);p.refreshCalendar=(...args)=>{calls++;return read(...args);};
+ assert.equal(p.autoRefreshCalendar(),true);await flush();assert.equal(p.calendarNextRefresh,clock.now+600000);
+ clock.now+=599999;assert.equal(p.autoRefreshCalendar(),false);clock.now++;
+ entry.homePanel='mail';assert.equal(p.autoRefreshCalendar(),false);entry.homePanel='calendar';
+ p.calendarModal={};assert.equal(p.autoRefreshCalendar(),false);p.calendarModal=null;
+ assert.equal(p.autoRefreshCalendar(),true);await flush();assert.equal(calls,2);p.toolbars.clear();p.unload();
+});
+
+test('A freshly connected Calendar waits ten minutes before its first automatic read',async()=>{
+ const clock=refreshClock(),f=fixture([],{}, {Date:clock.Date});await f.start();const p=f.plugin;p.refreshHomes=()=>{};
+ groupedHomeEntry(f);p.calendarEnabled=true;p.calendarCache={fetchedAt:clock.now,events:[]};
+ let reads=0;p.refreshCalendar=async()=>{reads++;};
+ clock.now+=599999;assert.equal(p.autoRefreshCalendar(),false);assert.equal(reads,0);
+ clock.now++;assert.equal(p.autoRefreshCalendar(),true);assert.equal(reads,1);p.toolbars.clear();p.unload();
+});
+
+test('Mail uses a ten-minute completion interval and preserves permission-denial suppression',async()=>{
+ const clock=refreshClock(),f=fixture([],{}, {Date:clock.Date});await f.start();const p=f.plugin;p.refreshHomes=()=>{};
+ p.mailSupported=()=>true;p.mailEnabled=true;p.fetchMailSnapshot=async()=>mailFixtureSnapshot();
+ await p.refreshMail();assert.equal(p.mailNextRefresh,clock.now+600000);
+ const entry=groupedHomeEntry(f);entry.homePanel='mail';clock.now+=600000;p.mailPermissionError=true;
+ assert.equal(p.autoRefreshMail(),false);p.toolbars.clear();p.unload();
+});
+
+test('Refresh all widgets reads connected sources once, including an inactive Mail tab, and waits for every source',async()=>{
+ const f=fixture();await f.start();const p=f.plugin;assert.equal(typeof p.refreshAllWidgets,'function');
+ p.refreshHomes=()=>{};p.calendarEnabled=true;p.mailEnabled=true;p.mailSupported=()=>true;p.slackConnected=true;
+ const calls=[],finish={};for(const source of ['Calendar','Mail','YouTrack','Slack'])p['refresh'+source]=()=>{calls.push(source);return new Promise(r=>finish[source]=r);};
+ p.homeCollapsed=true;const first=p.refreshAllWidgets();await flush();await p.refreshAllWidgets();
+ assert.deepEqual(calls,['Calendar','Mail','YouTrack','Slack']);assert.equal(p.widgetsRefreshing,true);
+ finish.Calendar();finish.Mail();finish.Slack();await flush();assert.equal(p.widgetsRefreshing,true);finish.YouTrack();await first;
+ assert.equal(p.widgetsRefreshing,false);assert.equal(f.saves.length,0);p.unload();await p.refreshAllWidgets();assert.equal(calls.length,4);
+});
+
+test('Refresh all widgets skips disconnected/editing sources and isolates failures without leaking details',async()=>{
+ const f=fixture();await f.start();const p=f.plugin;assert.equal(typeof p.refreshAllWidgets,'function');p.refreshHomes=()=>{};
+ const profile=p.youtrackProfile;p.youtrackProfile=null;
+ const calls=[];for(const source of ['Calendar','Mail','YouTrack','Slack'])p['refresh'+source]=async()=>{calls.push(source);if(source==='YouTrack')throw Error('PRIVATE_FAILURE');};
+ await p.refreshAllWidgets();assert.deepEqual(calls,[]);assert.equal(f.modals.length,0);
+ p.youtrackProfile=profile;p.calendarEnabled=true;p.mailEnabled=true;p.mailSupported=()=>true;p.slackConnected=true;
+ await p.refreshAllWidgets();assert.deepEqual(calls,['Calendar','Mail','YouTrack','Slack']);assert.equal(p.widgetsRefreshing,false);
+ assert.ok(f.notices.some(x=>/could not refresh/i.test(x)));assert.ok(!f.notices.some(x=>x.includes('PRIVATE_FAILURE')));
+ p.calendarModal={};p.mailModal={};p.slackModal={};p.youtrackModal={};
+ calls.length=0;await p.refreshAllWidgets();assert.deepEqual(calls,[]);
+ p.youtrackModal=null;p.youtrackSetupBusy=true;await p.refreshAllWidgets();assert.deepEqual(calls,[]);
+ p.calendarModal=null;p.mailModal=null;p.slackModal=null;p.unload();
+});
+
 test('Type icons are explicit preferences, with a neutral fallback and no startup writes',async()=>{
  const f=fixture([], {typeIcons:{Data:'flask-conical',MSc:'not-a-real-icon',Personal:'<svg onload=alert(1)>'}});await f.start();
  assert.equal(typeof f.plugin.typeIcon,'function');
@@ -171,9 +290,9 @@ test('Mail ignores pending results after disconnect and only auto reads while vi
 function groupedHomeEntry(f) {
  const node=()=>{const n=new Dom();n.isConnected=true;n.getClientRects=()=>[{}];n.hidden=false;n.append=(...items)=>n.children.push(...items);n.replaceChildren=()=>{n.children=[];};n.focus=()=>{f.doc.activeElement=n;};return n;};
  f.doc.createElement=()=>node();
- const entry={scope:{ownerDocument:f.doc},home:node(),homePanel:'calendar',calendarPanel:node(),mailPanel:node(),calendarMainTab:node(),mailMainTab:node(),mailRefresh:node(),
+ const entry={scope:{ownerDocument:f.doc},home:node(),homePanel:'calendar',calendarPanel:node(),mailPanel:node(),calendarMainTab:node(),mailMainTab:node(),
   calendarMode:'month',selectedDay:'2026-11-19',calendarMonth:'2026-11',mailAccount:'a',mailFilter:'unread',agenda:node(),mailList:node(),panelScroll:{}};
- for (const name of ['calendarDays','monthTab','agendaTab','calendarPrevious','calendarNext','calendarConnect','calendarRefresh']) entry[name]=node();
+ for (const name of ['calendarDays','monthTab','agendaTab','calendarPrevious','calendarNext','calendarConnect','calendarStatus']) entry[name]=node();
  entry.home.ownerDocument=f.doc;entry.agenda.scrollTop=48;entry.mailList.scrollTop=120;
  f.plugin.toolbars.set({},entry);return entry;
 }
@@ -187,7 +306,7 @@ test('Calendar and Mail tabs preserve each view and scroll without settings writ
  assert.equal(entry.mailMainTab.getAttribute('aria-selected'),'true');assert.equal(entry.mailMainTab.tabIndex,0);assert.equal(entry.calendarMainTab.tabIndex,-1);
  assert.equal(entry.calendarMonth,'2026-11');assert.equal(entry.selectedDay,'2026-11-19');assert.equal(entry.calendarMode,'month');
  assert.equal(entry.mailAccount,'a');assert.equal(entry.mailFilter,'unread');assert.equal(entry.mailList.scrollTop,120);
- f.plugin.setHomePanel(entry,'calendar');assert.equal(entry.calendarPanel.hidden,false);assert.equal(entry.mailPanel.hidden,true);assert.equal(entry.mailRefresh.hidden,true);
+ f.plugin.setHomePanel(entry,'calendar');assert.equal(entry.calendarPanel.hidden,false);assert.equal(entry.mailPanel.hidden,true);
  assert.equal(entry.agenda.scrollTop,48);assert.equal(reads,0);assert.equal(f.saves.length,0);
  f.plugin.setHomePanel(entry,'unknown');assert.equal(entry.homePanel,'calendar');f.plugin.toolbars.clear();f.plugin.unload();
 });
@@ -270,7 +389,7 @@ function documentFixture() {
   doc.ownerDocument=doc;
   return doc;
 }
-function fixture(initial=[], saved={}) {
+function fixture(initial=[], saved={}, runtime={}) {
   const notices=[]; const files=new Map(); const caches=new Map(); const doc=documentFixture(); const cleanup=[];
   const opened=[]; const focused=[]; const saves=[]; const leaves=[]; const modals=[];
   class TFile {constructor(p,fm={},inline=[]){if(fm.youtrack_import==="local-v1"){fm.youtrack_url??=`https://tracker.example.com/issue/${fm.youtrack_id}`;fm.youtrack_assignee??="Alex";}this.path=p;this.name=path.posix.basename(p);this.basename=this.name.replace(/\.md$/,'');this.extension='md';this.parent={path:path.posix.dirname(p),name:path.posix.basename(path.posix.dirname(p))};this.stat={mtime:Date.parse('2026-01-01T00:00:00Z'),ctime:Date.parse('2026-01-01T00:00:00Z')};files.set(p,this);caches.set(p,{frontmatter:fm,tags:inline.map(tag=>({tag}))});}}
@@ -315,16 +434,17 @@ function fixture(initial=[], saved={}) {
   Plugin.prototype.saveData=async data=>{saved=JSON.parse(JSON.stringify(data));saves.push(saved);};
   class Modal {constructor(){this.contentEl={empty(){}};this.closed=false;}open(){modals.push(this);}close(){this.closed=true;}}
   const obsidian={Plugin,Modal,TFile,Menu:class {},Setting:class {},Notice:class {constructor(s){notices.push(s);}},getAllTags:c=>[...['tags','tag'].flatMap(k=>Array.isArray(c.frontmatter?.[k])?c.frontmatter[k]:String(c.frontmatter?.[k]||'').split(/[,\s]+/)).filter(Boolean).map(t=>'#'+t.replace(/^#/,'')),...(c.tags||[]).map(x=>x.tag)]};
-  const context={module:{exports:{}},require:n=>{if(['node:fs/promises','node:fs','node:path','node:os','node:buffer'].includes(n))return require(n);assert.equal(n,'obsidian');return obsidian;},document:doc,Element:Dom,HTMLElement:Dom,MutationObserver:doc.defaultView.MutationObserver,console,setTimeout,clearTimeout};
+  const context={module:{exports:{}},require:n=>{if(['node:fs/promises','node:fs','node:path','node:os','node:buffer'].includes(n))return require(n);assert.equal(n,'obsidian');return obsidian;},document:doc,Element:Dom,HTMLElement:Dom,MutationObserver:doc.defaultView.MutationObserver,console,setTimeout,clearTimeout,...runtime};
   obsidian.requestUrl=args=>{requests.push(args);return app.requestCalendar(args);}; context.URL=URL; context.URLSearchParams=URLSearchParams;
-  vm.runInNewContext(source+'\nmodule.exports.TestModal = AddCardModal;',context);
+  vm.runInNewContext(source+'\nmodule.exports.TestModal = AddCardModal; module.exports.testDateGroup = typeof homeDateGroup === "function" ? homeDateGroup : null;',context);
   const folders=['Quick Notes','Data','Other','Personal','MSc','Benchmark','Unity','Attachments','_kanban'].map(name=>({name,path:`Hub/${name}`,children:[]}));
   for(const folder of folders)files.set(folder.path,folder);
   files.set('Hub',{name:'Hub',path:'Hub',children:folders});
   for(const [p,fm,inline] of initial)new TFile(p,fm,inline);
   const plugin=new context.module.exports();
+  const dateGroup=context.module.exports.testDateGroup;
   plugin.restoreYouTrack=function(){this.youtrackProfile={host:'tracker.example.com',login:'Alex',project:'DEMO',states:{backlog:'To do','in-progress':'In Progress',done:'Done'},syncEnabled:true};};
-  return {plugin,app,doc,files,caches,notices,TFile,opened,focused,saves,leaves,modals,moves,secrets,requests,storage,Modal:context.module.exports.TestModal,start:async()=>{await plugin.onload();plugin.youtrackProfile={host:"tracker.example.com",login:"Alex",project:"DEMO",states:{backlog:"To do","in-progress":"In Progress",done:"Done"},syncEnabled:true};plugin.slackSources={channel:"team-notes",group:"builders"};await flush();},flush};
+  return {dateGroup,plugin,app,doc,files,caches,notices,TFile,opened,focused,saves,leaves,modals,moves,secrets,requests,storage,Modal:context.module.exports.TestModal,start:async()=>{await plugin.onload();plugin.youtrackProfile={host:"tracker.example.com",login:"Alex",project:"DEMO",states:{backlog:"To do","in-progress":"In Progress",done:"Done"},syncEnabled:true};plugin.slackSources={channel:"team-notes",group:"builders"};await flush();},flush};
 }
 
 test('Type selection moves a renamed Quick note and preserves its content and membership',async()=>{
@@ -1556,7 +1676,7 @@ test('Agenda renders keyboard-accessible meeting anchors and leaves unsafe or ab
  const f=fixture();await f.start();
  f.doc.createElement=tag=>{const node=new Dom(tag);node.append=(...items)=>node.children.push(...items);node.replaceChildren=()=>{node.children=[];};return node;};
  const entry={scope:{ownerDocument:f.doc},calendarMode:'agenda',selectedDay:'2026-10-17'};
- for(const name of ['calendarDays','agenda','monthTab','agendaTab','calendarPrevious','calendarNext','calendarConnect','calendarRefresh'])entry[name]=f.doc.createElement('div');
+ for(const name of ['calendarDays','agenda','monthTab','agendaTab','calendarPrevious','calendarNext','calendarConnect','calendarStatus'])entry[name]=f.doc.createElement('div');
  f.plugin.calendarEnabled=true;
  const start=new Date('2026-10-17T09:00:00').toISOString(),end=new Date('2026-10-17T10:00:00').toISOString();
  f.plugin.calendarCache={kind:'google',fetchedAt:Date.now(),months:new Map([['2026-10',[
