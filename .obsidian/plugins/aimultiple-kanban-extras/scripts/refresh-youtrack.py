@@ -250,8 +250,38 @@ def collect(call):
                 'priority': priority, 'url': f'https://{HOST}/issue/{issue_id}'})
         if not more:
             return {'schema': 1, 'source': 'YouTrack MCP', 'assignee': LOGIN,
-                'fetchedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'issues': issues}
+                'fetchedAt': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'issues': issues,
+                'completed': collect_completed(call, seen)}
     raise ReaderError('incomplete')
+
+
+def collect_completed(call, seen):
+    # One bounded page; an incomplete or foreign row invalidates the whole snapshot.
+    data = call('search_issues', {'query': QUERY.replace('#Unresolved', '#Resolved'),
+        'limit': 20, 'offset': 0, 'customFieldsToReturn': ['State', 'Priority', 'Assignee']})
+    rows, more = data.get('issuesPage'), data.get('hasNextPage')
+    if not isinstance(rows, list) or type(more) is not bool or len(rows) > 20 or (more and len(rows) != 20):
+        raise ReaderError('incomplete')
+    issues = []
+    for row in rows:
+        if not isinstance(row, dict): raise ReaderError('incomplete')
+        issue_id, fields, resolved = row.get('id'), row.get('customFields'), row.get('resolvedAt')
+        if (not isinstance(issue_id, str) or not re.fullmatch(rf'{re.escape(PROJECT)}-[0-9]+', issue_id)
+                or issue_id in seen or row.get('project') != PROJECT or not isinstance(fields, dict)
+                or fields.get('Assignee') != LOGIN or row.get('url') != f'https://{HOST}/issue/{issue_id}'):
+            raise ReaderError('incomplete')
+        try:
+            if isinstance(resolved, str) and len(resolved) <= 50: datetime.fromisoformat(resolved.replace('Z', '+00:00'))
+            elif type(resolved) not in (int, float) or not 0 < resolved < 1e15: raise ValueError()
+        except (TypeError, ValueError): raise ReaderError('incomplete') from None
+        title, state, priority = row.get('summary'), fields.get('State'), fields.get('Priority')
+        if (not isinstance(title, str) or not title.strip() or len(title) > 5000
+                or not isinstance(state, str) or not state.strip() or not isinstance(priority, str)):
+            raise ReaderError('incomplete')
+        seen.add(issue_id)
+        issues.append({'id': issue_id, 'title': title, 'assignee': LOGIN, 'state': state,
+            'priority': priority, 'url': f'https://{HOST}/issue/{issue_id}'})
+    return {'issues': issues, 'hasMore': more}
 
 
 def attachment_path(url):

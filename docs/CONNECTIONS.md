@@ -2,7 +2,7 @@
 
 The board works without any account connection. This package never uses the maintainer's accounts. Enter tokens and OAuth files in Obsidian's local setup dialogs. Keep them out of notes, GitHub and chat.
 
-Source 1.4.0 uses **Refresh all widgets** beside Customize; the published 1.1.0 ZIP still has the older separate controls and intervals. Automatic reads run only while their Home/widget is visible; Calendar and Mail additionally require their active tab. Manual refresh also includes connected hidden modules and inactive tabs. It never connects a new account, imports issues or changes remote State.
+Source 1.5.0 uses **Refresh all widgets** beside Customize; the published 1.1.0 ZIP still has the older separate controls and intervals. Automatic reads run only while their Home/widget is visible; Calendar and Mail additionally require their active tab. Manual refresh also includes connected hidden modules and inactive tabs. It never connects a new account, imports issues or changes remote State.
 
 ## Google Calendar
 
@@ -62,9 +62,15 @@ Create a token under your YouTrack profile's **Account Security → Tokens / New
 3. Enter **Your login** and **Project key**.
 4. Paste your **Permanent token** in the local masked field.
 5. Leave **Board status sync** off for the initial setup, then choose **Connect**.
-6. The dialog closes after identity and list validation. Use **Refresh all widgets** to load unresolved issues assigned to you. While the YouTrack widget is visible, its read-only snapshot refreshes about every six hours. A fresh saved snapshot defers the startup read; a failed read keeps the previous snapshot and waits six hours before an automatic retry in that running session. Manual refresh can retry sooner. Hidden views and device sleep defer automatic reads; this is not a background note mirror.
+6. The dialog closes after identity and list validation. Use **Refresh all widgets** to load open issues and the latest 20 completed issues assigned to you. While the YouTrack widget is visible, its read-only snapshot refreshes about every six hours. A fresh saved snapshot defers the startup read; a failed read keeps the previous snapshot and waits six hours before an automatic retry in that running session. Manual refresh can retry sooner. Hidden views and device sleep defer automatic reads; this is not a background note mirror.
 
 This adapter expects MCP issue responses with scalar **Assignee, State and Priority** fields. State names can differ and are configurable. Multiple assignees or custom field schemas may require adapter changes. [AGENTS.md](../AGENTS.md) explains the boundaries. Logins support letters, digits and `_ . @ + -`. Project keys use uppercase letters, digits and underscores, starting with a letter. An empty list alone does not prove the project is empty: also check the key and issue visibility.
+
+### Filter the widget
+
+**To do**, **In progress** and **Done** work on the saved snapshot without new requests or State writes. To do and In progress use your configured State names; Done includes recently resolved issues (including other resolved State labels, such as Duplicate). **Other** appears when loaded open issues have unmatched State names. The count is the number shown in the selected view, not a project-wide total. Hover it for the project/account scope.
+
+Each refresh validates the complete open list (up to 400 issues) and one page of up to 20 resolved issues sorted by most recent update. If more completed issues exist, Done explains the limit and points to **Open YouTrack**. An older snapshot has no completed page; use **Refresh all widgets** to load it. Any invalid page keeps the previous complete snapshot. Filter selection starts at To do for a new view and is not saved to settings.
 
 ### Local imports and optional State sync
 

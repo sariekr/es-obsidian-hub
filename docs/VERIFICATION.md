@@ -1,5 +1,13 @@
 # Verification record
 
+## 1.5.0 YouTrack filters: 26 October 2026
+
+- Three focused Node tests and completed-page Python tests first failed for missing behavior, then passed. Final plugin suites: **212 Node / 24 Python**, no failures. Coverage includes configured State names, other open states, resolved variants, confirmed local State overlays, legacy snapshots, atomic validation, duplicate/foreign rows and completed-page bounds. No remote issue was used as a fixture.
+- The actual-runtime browser fixture passed in native Chrome: desktop dark (1920px window) and 800px light panel. The separately adapted personal runtime passed the same filter checks at 480px dark. These are synthetic browser views, not native light/mobile tests. Filter selection, accessible pressed state, visible identities, resolved labels, legacy guidance and no reads/settings/note writes were checked. Existing four-region geometry, typography, Calendar marker and long-error checks also passed.
+- Independent disconnected demo: **Obsidian 1.11.7 / 1470×800 / dark / 300px widgets**. To do, In progress and Done were clicked; selection and disconnected guidance remained correct, controls aligned with Calendar and Slack, and all three board columns remained visible. Returned to To do and closed the demo window with its board still open. No real account was connected or issue imported.
+- Distribution checks: pristine setup checker PASS, **3 distribution tests PASS**, reproducible ZIP build PASS. ZIP members match the 72 allowlisted files plus `distribution.json`; every packaged hash matches. All 23 demo Markdown files outside plugin metadata were unchanged.
+- The account reader now performs one additional read-only completed-page query per refresh. Live service State writes, new account setup, native light/narrow, mobile and second-device behavior were not tested. The separately authorized personal installation is not public release staging and contributes no personal files or screenshots to this repository.
+
 ## 1.4.1 Calendar marker fix: 26 October 2026
 
 A connected month exposed overlapping date badges and meeting dots after the compact-day adjustment. The actual-runtime regression first failed because the badge left insufficient space below it. The fix gives each day separate 24px date / 4px gap / 4px marker tracks with a 36px minimum cell. Empty days reserve the same tracks. Counts and accessible labels retain their existing logic; only presentation changes.

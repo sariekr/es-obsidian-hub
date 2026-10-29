@@ -52,7 +52,11 @@ last. Dates group Mail and Slack into Today, Yesterday and older calendar dates;
 the row shows time, with the full timestamp in its accessible label and tooltip.
 Use local calendar arithmetic, including midnight, year and DST transitions.
 YouTrack groups by actual State labels from the snapshot, preserving issue order
-inside each group and group order by first occurrence. Its board is unaffected.
+inside each group and group order by first occurrence. Its controls use the same
+button geometry and selected accent as Slack: To do / In progress / Done, with
+Other only when needed for unmatched open states. Keep actual State headings,
+quiet visible-row counts and a scope tooltip. Filtering does not change the
+board. Done must disclose its 20-result page limit; do not imply a full archive.
 
 ## Color means something
 

@@ -75,3 +75,11 @@ The 25 October recommendation (selected and implemented on 26 October below) was
 ## Calendar marker correction — 26 October 2026
 
 The [Calendar maintainer README](https://github.com/liamcain/obsidian-calendar-plugin) was checked through Bright Data for the reported number/dot collision. Its small day markers represent daily-note word counts and tasks, not meetings. The useful visual principle is a distinct number and marker area; Hub retains its own meeting-count semantics, theme variables and API. No upstream code or plugin was installed. The implemented fix reserves separate badge/marker rows, keeps 1/2/3+ markers centered, and scrolls short month grids. Evidence and the corrected height-test limitation are in [VERIFICATION.md](VERIFICATION.md#141-calendar-marker-fix-26-october-2026).
+
+## YouTrack State filters — 26 October 2026
+
+**Researched:** JetBrains' [search attributes documentation](https://www.jetbrains.com/help/youtrack/cloud/search-and-command-attributes.html), read through Bright Data, distinguishes `#Resolved` from a literal State called Done. Resolved issues can have other final labels, such as Duplicate. The widget therefore uses the configured open State mappings and one bounded `#Resolved sort by: updated desc` page for Done. No third-party plugin or new Obsidian API is needed.
+
+**Implemented:** Slack-style To do / In progress / Done controls using the existing frame, typography and theme accent. Other preserves unmatched open states. The project/account caption becomes a tooltip on the visible-row count. Completed results are limited to 20 and disclose further pages. Six-hour refresh remains.
+
+**Tested:** Mapped states, resolved variants, malformed/foreign/duplicate results, legacy snapshots and filter purity in synthetic tests; actual-runtime dark/light browser checks and disconnected native demo selection. Public demo evidence does not establish a live YouTrack connection. See [VERIFICATION.md](VERIFICATION.md).

@@ -158,11 +158,12 @@ class ReaderTests(unittest.TestCase):
             requests.append((name, args))
             if name == 'get_current_user':
                 return {'login': 'Alex'}
+            if '#Resolved' in args['query']: return {'issuesPage': [], 'hasNextPage': False}
             offset = args['offset']
             return {'issuesPage': [issue(i) for i in range(offset + 1, min(offset + 21, 22))], 'hasNextPage': offset == 0}
         snapshot = reader.collect(call)
         self.assertEqual(len(snapshot['issues']), 21)
-        self.assertEqual([args['offset'] for name, args in requests if name == 'search_issues'], [0, 20])
+        self.assertEqual([args['offset'] for name, args in requests if name == 'search_issues'], [0, 20, 0])
         self.assertEqual(set(snapshot['issues'][0]), {'id', 'title', 'assignee', 'state', 'priority', 'url'})
         self.assertEqual(snapshot['source'], 'YouTrack MCP')
 
@@ -178,6 +179,39 @@ class ReaderTests(unittest.TestCase):
         for result in cases:
             with self.subTest(result=result), self.assertRaisesRegex(reader.ReaderError, 'incomplete'):
                 reader.collect(lambda name, args: {'login': 'Alex'} if name == 'get_current_user' else result)
+
+    def test_completed_results_are_bounded_and_validated_separately(self):
+        requests = []
+        def call(name, args):
+            requests.append((name, args))
+            if name == 'get_current_user': return {'login': 'Alex'}
+            if '#Unresolved' in args['query']: return {'issuesPage': [issue(1)], 'hasNextPage': False}
+            self.assertIn('#Resolved sort by: updated desc', args['query'])
+            return {'issuesPage': [{**issue(n), 'resolvedAt': '2026-10-25T10:00:00Z', 'customFields': {**issue(n)['customFields'], 'State': 'Done'}} for n in range(2, 22)], 'hasNextPage': True}
+        snapshot = reader.collect(call)
+        self.assertEqual(len(snapshot['issues']), 1)
+        self.assertEqual(len(snapshot['completed']['issues']), 20)
+        self.assertTrue(snapshot['completed']['hasMore'])
+        self.assertEqual([args['offset'] for name, args in requests if name == 'search_issues'], [0, 0])
+        self.assertEqual({name for name, _ in requests}, {'get_current_user', 'search_issues'})
+
+    def test_invalid_completed_page_rejects_whole_snapshot(self):
+        done = {**issue(2), 'resolvedAt': '2026-10-25T10:00:00Z', 'customFields': {**issue(2)['customFields'], 'State': 'Done'}}
+        for row in [{**done, 'resolvedAt': None}, {**done, 'resolvedAt': 'bad'}, {**done, 'project': 'OTHER'}, {**done, 'url': 'https://other.invalid'}, {**done, 'customFields': {**done['customFields'], 'Assignee': 'Other'}}, {**done, 'id': 'DEMO-1', 'url': 'https://tracker.example.com/issue/DEMO-1'}]:
+            def call(name, args):
+                if name == 'get_current_user': return {'login': 'Alex'}
+                return {'issuesPage': [issue(1)] if '#Unresolved' in args['query'] else [row], 'hasNextPage': False}
+            with self.subTest(row=row), self.assertRaisesRegex(reader.ReaderError, 'incomplete'): reader.collect(call)
+
+    def test_completed_page_rejects_bad_pagination(self):
+        done = {**issue(2), 'resolvedAt': 1792922400000}
+        for result in [{'issuesPage': [done], 'hasNextPage': True},
+                       {'issuesPage': [], 'hasNextPage': 'false'},
+                       {'issuesPage': [done] * 21, 'hasNextPage': False}]:
+            def call(name, args):
+                if name == 'get_current_user': return {'login': 'Alex'}
+                return {'issuesPage': [], 'hasNextPage': False} if '#Unresolved' in args['query'] else result
+            with self.subTest(result=result), self.assertRaisesRegex(reader.ReaderError, 'incomplete'): reader.collect(call)
 
     def test_json_and_sse_responses_match_request_and_are_bounded(self):
         result = {'jsonrpc': '2.0', 'id': 7, 'result': {'value': 'ok'}}

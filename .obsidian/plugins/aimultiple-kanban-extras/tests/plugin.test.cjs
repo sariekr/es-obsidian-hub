@@ -1227,6 +1227,37 @@ test('YouTrack widget rejects other assignees and unsafe URLs, keeping a dated M
 });
 
 function widgetSnapshot(title='Fresh card') {return {schema:1,source:'YouTrack MCP',assignee:'Alex',fetchedAt:new Date().toISOString(),issues:[{id:'DEMO-161',title,assignee:'Alex',state:'To do',priority:'Normal',url:'https://tracker.example.com/issue/DEMO-161'}]};}
+test('YouTrack filters use mapped states, retain other states and include bounded completed results',async()=>{
+ const f=fixture();await f.start();const p=f.plugin;
+ p.youtrackProfile.states={backlog:'Open','in-progress':'Doing',done:'Closed'};
+ const item=(id,state)=>({...widgetSnapshot().issues[0],id:'DEMO-'+id,url:'https://tracker.example.com/issue/DEMO-'+id,state});
+ p.youtrackSnapshot={...widgetSnapshot(),issues:[item(1,'Open'),item(2,'Doing'),item(3,'Review')],completed:{issues:[item(4,'Closed'),item(5,'Duplicate')],hasMore:false}};
+ const ids=filter=>Array.from(p.homeYouTrackIssues(filter),x=>x.id);
+ assert.deepEqual(ids('backlog'),['DEMO-1']);assert.deepEqual(ids('in-progress'),['DEMO-2']);
+ assert.deepEqual(ids('done'),['DEMO-4','DEMO-5']);assert.deepEqual(ids('other'),['DEMO-3']);
+ assert.equal(f.requests.length,0);assert.equal(f.saves.length,0);f.plugin.unload();
+});
+test('YouTrack completed snapshots validate atomically, retain old snapshots, and accept legacy open-only data',async()=>{
+ const f=fixture();await f.start();const p=f.plugin;let writes=0;
+ const done={...widgetSnapshot().issues[0],id:'DEMO-9',url:'https://tracker.example.com/issue/DEMO-9',state:'Done'};
+ const fresh={...widgetSnapshot(),completed:{issues:[done],hasMore:false}};
+ p.fetchYouTrackSnapshot=async()=>fresh;p.persistYouTrackSnapshot=async()=>writes++;
+ await p.refreshYouTrack();assert.equal(p.youtrackSnapshot,fresh);assert.equal(p.homeYouTrackIssues('done').length,1);assert.equal(writes,1);
+ for(const completed of [null,{issues:[{...done,assignee:'Other'}],hasMore:false},{issues:[{...done,url:'https://other.invalid'}],hasMore:false},{issues:[fresh.issues[0]],hasMore:false},{issues:Array(21).fill(done),hasMore:false},{issues:[done],hasMore:true}]){
+  p.fetchYouTrackSnapshot=async()=>({...fresh,completed});await p.refreshYouTrack();assert.equal(p.youtrackSnapshot,fresh);assert.equal(writes,1);assert.match(p.youtrackRefreshError,/Kept the last saved list/);
+ }
+ const legacy=widgetSnapshot();p.fetchYouTrackSnapshot=async()=>legacy;await p.refreshYouTrack();assert.equal(p.youtrackSnapshot,legacy);assert.equal(p.homeYouTrackIssues('done').length,0);f.plugin.unload();
+});
+test('Confirmed State changes move between widget filters without replaying remote writes',async()=>{
+ const f=fixture();await f.start();const p=f.plugin;const issue=widgetSnapshot().issues[0];
+ p.youtrackSnapshot={...widgetSnapshot(),fetchedAt:'2026-01-01T00:00:00Z',completed:{issues:[],hasMore:false}};
+ p.youtrackSyncResults.set(issue.id,{status:'synced',column:'done',at:Date.now()});
+ assert.equal(p.homeYouTrackIssues('backlog').length,0);assert.equal(p.homeYouTrackIssues('done').length,1);
+ p.youtrackSyncResults.set(issue.id,{status:'synced',column:'in-progress',at:Date.now()});
+ assert.equal(p.homeYouTrackIssues('done').length,0);assert.equal(p.homeYouTrackIssues('in-progress').length,1);
+ p.youtrackSnapshot.fetchedAt=new Date(Date.now()+10000).toISOString();assert.equal(p.homeYouTrackIssues('backlog').length,1);
+ assert.equal(f.requests.length,0);assert.equal(f.saves.length,0);p.unload();
+});
 test('YouTrack Refresh fetches on demand, saves a complete snapshot and preserves unrelated settings',async()=>{
  const f=fixture([], {homeCollapsed:false,hiddenTagSuggestions:['keep']});await f.start();
  assert.equal(typeof f.plugin.refreshYouTrack,'function');let calls=0,saved;

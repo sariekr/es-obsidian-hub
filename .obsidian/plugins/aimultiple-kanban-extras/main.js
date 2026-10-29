@@ -1026,7 +1026,13 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.youtrackMessage = el('p', 'aim-home-empty');
     entry.youtrackMessage.setAttribute('role', 'status');
     entry.youtrackMessage.hidden = true;
-    entry.youtrackContext = el('div','aim-widget-controls aim-widget-context');
+    const youtrackFilters = el('div','aim-widget-controls aim-home-youtrack-filters');
+    youtrackFilters.setAttribute('aria-label','Filter YouTrack issues');
+    entry.youtrackFilter = 'backlog'; entry.youtrackFilters = new Map();
+    for (const [id,label] of [['backlog','To do'],['in-progress','In progress'],['done','Done'],['other','Other']]) {
+      const control = button(label,() => { entry.youtrackFilter = id; this.updateYouTrackWidget(entry); },'aim-home-text-button');
+      entry.youtrackFilters.set(id,control); youtrackFilters.append(control);
+    }
     const source = el('a', 'aim-home-calendar-link', 'Open YouTrack');
     source.href = this.youtrackProfile ? `https://${this.youtrackProfile.host}/issues` : '#';
     source.hidden = !this.youtrackProfile; entry.youtrackSource = source;
@@ -1035,7 +1041,7 @@ class AIMultipleKanbanExtras extends Plugin {
     const youtrackFooter = homeWidgetFooter(doc, [setup,source], entry.youtrackStatus);
     const youtrackBody = el('div','aim-widget-body');
     youtrackBody.append(entry.youtrackMessage,entry.youtrackList);
-    youtrack.append(youtrackHead,entry.youtrackContext,youtrackBody,youtrackFooter);
+    youtrack.append(youtrackHead,youtrackFilters,youtrackBody,youtrackFooter);
 
     const slack = tile('aim-home-slack-tile', 'Slack inbox'); entry.widgets.slack = slack;
     const slackHead = el('div', 'aim-home-tile-heading aim-widget-header');
@@ -2419,7 +2425,7 @@ class AIMultipleKanbanExtras extends Plugin {
     try {
       const dir = this.manifest?.dir || `${this.app.vault.configDir || '.obsidian'}/plugins/aimultiple-kanban-extras`;
       const data = JSON.parse(await this.app.vault.adapter.read(`${dir}/youtrack-widget.json`));
-      if (data.schema !== 1 || data.assignee !== this.youtrackProfile.login || !Array.isArray(data.issues) || data.issues.some(item => !validYouTrackWidgetIssue(item, this.youtrackProfile)) || !Number.isFinite(Date.parse(data.fetchedAt))) throw new Error('Invalid snapshot');
+      if (!validYouTrackSnapshot(data,this.youtrackProfile)) throw new Error('Invalid snapshot');
       if (!this.active || revision !== this.youtrackReadRevision) return;
       this.youtrackSnapshot = data; this.youtrackSnapshotError = '';
     } catch (_) {
@@ -2576,13 +2582,7 @@ class AIMultipleKanbanExtras extends Plugin {
     try {
       const data = await this.fetchYouTrackSnapshot();
       if (!this.active) return;
-      const ids = new Set();
-      if (data?.schema !== 1 || data.source !== 'YouTrack MCP' || data.assignee !== this.youtrackProfile?.login ||
-          !Number.isFinite(Date.parse(data.fetchedAt)) || !Array.isArray(data.issues) || data.issues.length > 400 ||
-          data.issues.some(item => !item || !this.validYouTrackId(item.id) || ids.has(item.id) || !ids.add(item.id) ||
-            item.assignee !== this.youtrackProfile?.login || item.url !== `https://${this.youtrackProfile?.host}/issue/${item.id}` ||
-            typeof item.title !== 'string' || !item.title.trim() || item.title.length > 5000 ||
-            typeof item.state !== 'string' || item.state === this.youtrackStates.done || typeof item.priority !== 'string')) throw Error();
+      if (!validYouTrackSnapshot(data,this.youtrackProfile)) throw Error();
       await this.persistYouTrackSnapshot(data);
       if (!this.active) return;
       this.youtrackSnapshot = data; this.youtrackSnapshotError = ''; this.youtrackRefreshError = '';
@@ -2748,37 +2748,48 @@ class AIMultipleKanbanExtras extends Plugin {
     } finally { this.youtrackImports.delete(id); this.refreshHomes(); }
   }
 
-  homeYouTrackIssues() {
-    const rows = new Map((this.youtrackSnapshot?.issues || []).filter(item => validYouTrackWidgetIssue(item, this.youtrackProfile)).map(item => [item.id, item]));
+  youTrackIssueFilter(issue) {
+    if (issue.completed || issue.state === this.youtrackStates.done) return 'done';
+    if (issue.state === this.youtrackStates.backlog) return 'backlog';
+    return issue.state === this.youtrackStates['in-progress'] ? 'in-progress' : 'other';
+  }
+
+  homeYouTrackIssues(filter = 'all') {
+    const rows = new Map((this.youtrackSnapshot?.issues || []).filter(item => validYouTrackWidgetIssue(item, this.youtrackProfile)).map(item => [item.id, {...item,completed:false}]));
+    for (const item of this.youtrackSnapshot?.completed?.issues || []) {
+      if (!rows.has(item.id) && validYouTrackWidgetIssue(item,this.youtrackProfile)) rows.set(item.id,{...item,completed:true});
+    }
     const stamp = Date.parse(this.youtrackSnapshot?.fetchedAt) || 0;
     for (const [id, value] of this.youtrackVerifiedIssues) {
       if (value.at >= stamp && validYouTrackWidgetIssue(value.issue, this.youtrackProfile)) rows.set(id, value.issue);
     }
-    return [...rows.values()].filter(item => {
+    return [...rows.values()].map(item => {
       const result = this.youtrackSyncResults.get(item.id);
-      if (result?.status === 'synced' && result.at >= stamp) return result.column !== 'done';
-      return item.state !== this.youtrackStates.done;
-    }).map(item => {
-      const result = this.youtrackSyncResults.get(item.id);
-      return result?.status === 'synced' && result.at >= stamp ? {...item, state:this.youtrackStates[result.column]} : item;
-    });
+      return result?.status === 'synced' && result.at >= stamp ? {...item, state:this.youtrackStates[result.column],completed:result.column==='done'} : item;
+    }).filter(item => filter === 'all' || this.youTrackIssueFilter(item) === filter);
   }
 
   updateYouTrackWidget(entry) {
-    const issues = this.homeYouTrackIssues();
-    if (entry.youtrackContext) {
-      homeText(entry.youtrackContext,this.youtrackProfile ? `${this.youtrackProfile.project} · Assigned to you` : 'Assigned issues');
-      entry.youtrackContext.title = this.youtrackProfile ? `${this.youtrackProfile.host} · ${this.youtrackProfile.login}` : '';
+    const filter = entry.youtrackFilter || 'backlog', issues = this.homeYouTrackIssues(filter);
+    const hasOther = this.homeYouTrackIssues('other').length > 0;
+    for (const [id,control] of entry.youtrackFilters || []) {
+      control.setAttribute('aria-pressed',String(id === filter));
+      control.hidden = id === 'other' && !hasOther && filter !== 'other';
+      control.title = id === 'done' ? 'Recently completed issues, including all resolved states'
+        : id === 'other' ? 'Other states among your loaded issues' : `State: ${this.youtrackStates[id]}`;
     }
     const localStates = issues.map(issue => {
       try { const file = this.findYouTrackLocalNote(issue.id); const cache = file && this.app.metadataCache.getFileCache(file);
         return cache && fileHasKanbanTag(cache) ? cache.frontmatter?.board_column || 'on board' : file ? 'saved' : ''; }
       catch (_) { return 'check duplicates'; }
     });
-    const key = JSON.stringify([issues, localStates, [...this.youtrackImports.keys()], [...this.youtrackSyncResults], this.youtrackImportMessage, this.youtrackSnapshot?.fetchedAt, this.youtrackSnapshotError, this.youtrackRefreshError, this.youtrackBusy]);
+    const key = JSON.stringify([filter, this.youtrackSnapshot?.completed?.hasMore, issues, localStates, [...this.youtrackImports.keys()], [...this.youtrackSyncResults], this.youtrackImportMessage, this.youtrackSnapshot?.fetchedAt, this.youtrackSnapshotError, this.youtrackRefreshError, this.youtrackBusy]);
     if (key === entry.youtrackKey) return;
-    entry.youtrackKey = key; entry.youtrackList.replaceChildren();
-    homeText(entry.youtrackCount, `${issues.length} open`);
+    const oldScroll = entry.youtrackList.scrollTop, sameFilter = entry.youtrackLastFilter === filter;
+    entry.youtrackKey = key; entry.youtrackLastFilter = filter; entry.youtrackList.replaceChildren();
+    homeText(entry.youtrackCount, `${issues.length} shown`);
+    entry.youtrackCount.title = this.youtrackProfile ? `${this.youtrackProfile.project} · Assigned to ${this.youtrackProfile.login}` : 'Assigned issues';
+    if (filter === 'done' && this.youtrackSnapshot?.completed?.hasMore) entry.youtrackList.append(homeElement(entry.scope.ownerDocument,'p','aim-home-caption','Latest 20 completed issues. Open YouTrack for more.'));
     const groups = new Map();
     for (const [index,issue] of issues.entries()) { const state = issue.state || 'Open'; if (!groups.has(state)) groups.set(state,[]); groups.get(state).push([index,issue]); }
     for (const [state,items] of groups) {
@@ -2803,7 +2814,8 @@ class AIMultipleKanbanExtras extends Plugin {
       }
     }
     if (!issues.length) entry.youtrackList.append(homeElement(entry.scope.ownerDocument, 'p', 'aim-home-empty',
-      this.youtrackSnapshot ? 'No open cards in this snapshot.' : 'Connect your account in YouTrack settings. Your board works without a connection.'));
+      this.youtrackSnapshot ? filter === 'done' && !this.youtrackSnapshot.completed ? 'Completed issues are not loaded yet. Use Refresh all widgets.' : 'No issues in this view among the loaded results.' : 'Connect your account in YouTrack settings. Your board works without a connection.'));
+    entry.youtrackList.scrollTop = sameFilter ? oldScroll : 0;
     const message = this.youtrackImportMessage || this.youtrackRefreshError || this.youtrackSnapshotError;
     entry.youtrackMessage.replaceChildren();
     if (message) entry.youtrackMessage.append(homeElement(entry.scope.ownerDocument, 'span', '', message));
@@ -2828,7 +2840,7 @@ class AIMultipleKanbanExtras extends Plugin {
     entry.youtrackList.setAttribute('aria-busy', String(this.youtrackBusy));
     const stamp = this.youtrackSnapshot?.fetchedAt;
     homeText(entry.youtrackStatus, this.youtrackBusy ? 'Refreshing…' : !this.youtrackProfile ? 'Not connected' : (stamp ? `Updated ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(stamp))}` : 'Not loaded') + ' · Auto 6h');
-    entry.youtrackStatus.title = (stamp ? `Last read ${new Date(stamp).toLocaleString('en-GB')}. ` : '') + 'Reads your open cards every 6 hours while YouTrack is visible, or with Refresh all widgets. Updates only this snapshot; never imports notes or changes issue status.';
+    entry.youtrackStatus.title = (stamp ? `Last read ${new Date(stamp).toLocaleString('en-GB')}. ` : '') + 'Reads your open and recent completed cards every 6 hours while YouTrack is visible, or with Refresh all widgets. Updates only this snapshot; never imports notes or changes issue status.';
   }
 
   async ensureQuickNotesFolder() {
@@ -3802,7 +3814,14 @@ function validYouTrackId(id,profile) {
 }
 
 function validYouTrackSnapshot(value,profile) {
-  return !!value && value.schema===1 && value.source==='YouTrack MCP' && value.assignee===profile.login && Number.isFinite(Date.parse(value.fetchedAt)) && Array.isArray(value.issues) && value.issues.length<=400 && new Set(value.issues.map(i=>i?.id)).size===value.issues.length && value.issues.every(i=>validYouTrackWidgetIssue(i,profile));
+  if (!profile || !value || value.schema!==1 || value.source!=='YouTrack MCP' || value.assignee!==profile.login ||
+      !Number.isFinite(Date.parse(value.fetchedAt)) || !Array.isArray(value.issues) || value.issues.length>400) return false;
+  const ids=new Set(), valid=item=>validYouTrackWidgetIssue(item,profile) && !!item.title.trim() && typeof item.priority==='string' && !ids.has(item.id) && !!ids.add(item.id);
+  if (!value.issues.every(item=>valid(item) && item.state!==profile.states.done)) return false;
+  if (!Object.hasOwn(value,'completed')) return true; // Old snapshots remain usable until the next refresh.
+  const done=value.completed;
+  return !!done && Array.isArray(done.issues) && done.issues.length<=20 && typeof done.hasMore==='boolean' &&
+    (!done.hasMore || done.issues.length===20) && done.issues.every(valid);
 }
 
 class HomeYouTrackModal extends Modal {
